@@ -4,14 +4,14 @@ on:
   issues:
     types: [opened]
 
-# Permissions are required to push code and close issues
+# Permissions required to push code and close issues
 permissions:
   contents: write
   issues: write
 
 jobs:
   download_from_issue:
-    # This conditional ensures the job ONLY runs if the issue title starts with "Download "
+    # Only run if the issue title starts with "Download "
     if: startsWith(github.event.issue.title, 'Download ')
     runs-on: ubuntu-latest
     
@@ -27,37 +27,36 @@ jobs:
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
-      - name: Install youtube-dl
-        run: pip install youtube_dl
+      # CHANGED: Installing yt-dlp instead of youtube-dl
+      - name: Install yt-dlp
+        run: pip install yt-dlp
 
       - name: Parse Issue Title and Run Script
         run: |
-          # 1. Get the issue title from the GitHub context
+          # 1. Get the issue title
           ISSUE_TITLE="${{ github.event.issue.title }}"
           
-          # 2. Strip the "Download " prefix to get the ID (and remove extra whitespace)
+          # 2. Extract ID (Remove "Download " prefix)
           VIDEO_ID=$(echo "${ISSUE_TITLE#"Download "}" | xargs)
           
-          # 3. Construct the full YouTube URL
+          # 3. Construct URL
           VIDEO_URL="https://www.youtube.com/watch?v=${VIDEO_ID}"
           
           echo "Processing Issue #${{ github.event.issue.number }}"
           echo "Extracted ID: $VIDEO_ID"
-          echo "Constructed URL: $VIDEO_URL"
           
-          # 4. Run the existing python script with the constructed URL
+          # 4. Run the script
           python download_video.py "$VIDEO_URL"
 
-      # NEW STEP: Commit and Push the video instead of uploading as artifact
       - name: Commit and Push Video
         run: |
           git config --global user.name "GitHub Action"
           git config --global user.email "action@github.com"
           
-          # Add the videos folder to staging
+          # Add the videos folder
           git add videos/
           
-          # Check if there are changes before committing to avoid errors
+          # Commit only if there are changes
           if git diff-index --quiet HEAD; then
             echo "No changes to commit"
           else
@@ -69,5 +68,4 @@ jobs:
         uses: peter-evans/close-issue@v3
         with:
           issue-number: ${{ github.event.issue.number }}
-          # Updated comment to reflect that the file is in the repo
           comment: "Download complete! The video has been committed to the 'videos' folder in the repository."
