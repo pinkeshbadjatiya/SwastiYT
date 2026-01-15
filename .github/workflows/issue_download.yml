@@ -50,3 +50,9 @@ jobs:
           name: video-from-issue-${{ github.event.issue.number }}
           path: videos/
           retention-days: 1
+
+      - name: Close Issue
+        uses: peter-evans/close-issue@v3
+        with:
+          issue-number: ${{ github.event.issue.number }}
+          comment: "Download complete! The video is available in the Actions Artifacts."
