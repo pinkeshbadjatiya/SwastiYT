@@ -4,6 +4,11 @@ on:
   issues:
     types: [opened]
 
+# Permissions are required to push code and close issues
+permissions:
+  contents: write
+  issues: write
+
 jobs:
   download_from_issue:
     # This conditional ensures the job ONLY runs if the issue title starts with "Download "
@@ -43,16 +48,26 @@ jobs:
           # 4. Run the existing python script with the constructed URL
           python download_video.py "$VIDEO_URL"
 
-      - name: Upload Video Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          # Naming the artifact based on the issue number ensures uniqueness
-          name: video-from-issue-${{ github.event.issue.number }}
-          path: videos/
-          retention-days: 1
+      # NEW STEP: Commit and Push the video instead of uploading as artifact
+      - name: Commit and Push Video
+        run: |
+          git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
+          
+          # Add the videos folder to staging
+          git add videos/
+          
+          # Check if there are changes before committing to avoid errors
+          if git diff-index --quiet HEAD; then
+            echo "No changes to commit"
+          else
+            git commit -m "Add video from Issue #${{ github.event.issue.number }}"
+            git push
+          fi
 
       - name: Close Issue
         uses: peter-evans/close-issue@v3
         with:
           issue-number: ${{ github.event.issue.number }}
-          comment: "Download complete! The video is available in the Actions Artifacts."
+          # Updated comment to reflect that the file is in the repo
+          comment: "Download complete! The video has been committed to the 'videos' folder in the repository."
