@@ -5,10 +5,6 @@ import re
 import json
 
 def parse_issue_body(file_path):
-    """
-    Parses the issue body text file looking for sections delimited by #### key ####.
-    Returns a dictionary of found keys and values.
-    """
     if not os.path.exists(file_path):
         return None
 
@@ -28,33 +24,49 @@ def parse_issue_body(file_path):
     return data
 
 def save_metadata(data, folder):
-    """
-    Saves the dictionary to a JSON file in the specified folder.
-    """
     video_id = data.get("id")
     if not video_id:
         return
 
-    json_filename = f"{video_id}.json"
-    json_path = os.path.join(folder, json_filename)
-    
+    # 1. Save JSON Metadata
+    json_path = os.path.join(folder, f"{video_id}.json")
     try:
         with open(json_path, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=4)
-        print(f"Metadata saved successfully: {json_path}")
+        print(f"Metadata saved: {json_path}")
     except Exception as e:
         print(f"Error saving metadata: {e}")
 
+    # 2. Save Release Body (Instagram Caption)
+    # Format: Title + Blank Line + Description
+    title = data.get("title", "")
+    description = data.get("description", "")
+    caption = f"{title}\n\n{description}"
+    
+    try:
+        with open("release_body.txt", "w", encoding="utf-8") as f:
+            f.write(caption)
+        print("Created release_body.txt")
+    except Exception as e:
+        print(f"Error saving release body: {e}")
+
+    # 3. Save Video ID to a file (for the Workflow to read easily)
+    try:
+        with open("video_id.txt", "w", encoding="utf-8") as f:
+            f.write(video_id)
+        print("Created video_id.txt")
+    except Exception as e:
+        print(f"Error saving video_id.txt: {e}")
+
 def download_video(issue_data):
-    # 1. Extract details
     video_url = issue_data.get("url")
     video_id = issue_data.get("id")
     
     if not video_url:
-        print("Error: 'url' field not found in issue description.")
+        print("Error: 'url' field not found.")
         sys.exit(1)
 
-    # 2. Define output folders
+    # Output folders
     base_dir = os.getcwd()
     videos_folder = os.path.join(base_dir, "videos")
     metadata_folder = os.path.join(base_dir, "metadata")
@@ -63,19 +75,18 @@ def download_video(issue_data):
         if not os.path.exists(folder):
             os.makedirs(folder)
 
-    # 3. Save Metadata JSON
+    # Save all helper files
     save_metadata(issue_data, metadata_folder)
 
-    # 4. Check if video file already exists (Skip Logic)
+    # Check existence
     filename_id = video_id if video_id else "%(id)s"
-    expected_filename = f"{filename_id}.mp4"
-    expected_file_path = os.path.join(videos_folder, expected_filename)
+    expected_file_path = os.path.join(videos_folder, f"{filename_id}.mp4")
     
     if video_id and os.path.exists(expected_file_path):
-        print(f"⏩ Skipping download: File already exists at {expected_file_path}")
+        print(f"⏩ Skipping download: File exists at {expected_file_path}")
         return
 
-    # 5. Configure yt-dlp options
+    # Download
     ydl_opts = {
         'outtmpl': f'{videos_folder}/{filename_id}.%(ext)s',
         'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
@@ -85,12 +96,11 @@ def download_video(issue_data):
         'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
     }
 
-    print(f"Starting download for URL: {video_url}")
-    
+    print(f"Starting download: {video_url}")
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([video_url])
-        print("Download completed successfully.")
+        print("Download success.")
     except Exception as e:
         print(f"Critical Error: {e}")
         sys.exit(1)
@@ -98,15 +108,12 @@ def download_video(issue_data):
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         issue_file_path = sys.argv[1]
-        print(f"Parsing issue file: {issue_file_path}")
-        
         parsed_data = parse_issue_body(issue_file_path)
-        
         if parsed_data:
             download_video(parsed_data)
         else:
-            print("Error: Could not read issue file or file is empty.")
+            print("Error parsing issue file.")
             sys.exit(1)
     else:
-        print("Error: No issue file path provided.")
+        print("Error: No file path provided.")
         sys.exit(1)
