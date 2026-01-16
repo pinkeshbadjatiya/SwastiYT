@@ -12,7 +12,7 @@ jobs:
   download_on_runner:
     if: startsWith(github.event.issue.title, 'Download')
     runs-on: self-hosted
-    environment: secure-runner
+    # environment: secure-runner
     
     steps:
       - name: Checkout code
