@@ -18,34 +18,25 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # STEP REMOVED: actions/setup-python (Not compatible with Ubuntu 25.10)
-      
-      # 1. Install System Dependencies (ffmpeg) and Python venv
-      # We use -y to automatically say "yes" to prompts
-      - name: Install System Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg python3-venv
-
-      # 2. Create Virtual Environment & Install yt-dlp
-      # This bypasses the "externally-managed-environment" error on new Ubuntu
+      # 1. Setup Virtual Environment (No sudo needed)
       - name: Setup Venv and Install Tools
         run: |
-          # Create a virtual environment named 'venv'
-          python3 -m venv venv
+          # Create venv if it doesn't exist to save time
+          if [ ! -d "venv" ]; then
+            python3 -m venv venv
+          fi
           
-          # Upgrade pip inside the venv
+          # Upgrade pip and install yt-dlp inside venv
           ./venv/bin/pip install --upgrade pip
-          
-          # Install yt-dlp inside the venv
           ./venv/bin/pip install yt-dlp
 
+      # 2. Run the Download Script
       - name: Validate and Download
         run: |
           ISSUE_TITLE="${{ github.event.issue.title }}"
           VIDEO_ID=$(echo "${ISSUE_TITLE#"Download "}" | xargs)
           
-          # Security: Regex Check (Must be exactly 11 chars)
+          # Security Check
           if [[ ! "$VIDEO_ID" =~ ^[a-zA-Z0-9_-]{11}$ ]]; then
             echo "::error::Security Alert: Invalid Video ID format: $VIDEO_ID"
             exit 1
@@ -54,9 +45,10 @@ jobs:
           VIDEO_URL="https://www.youtube.com/watch?v=${VIDEO_ID}"
           echo "Security Check Passed. Downloading: $VIDEO_ID"
           
-          # CRITICAL: We run python using the VENV executable
+          # Run using venv python
           ./venv/bin/python download_video.py "$VIDEO_URL"
 
+      # 3. Commit and Push
       - name: Commit and Push Video
         run: |
           git config user.name "Self-Hosted Runner"
@@ -71,8 +63,22 @@ jobs:
             git push
           fi
 
+      # 4. Close Issue (Using Native GitHub Script - No external tools needed)
       - name: Close Issue
-        uses: peter-evans/close-issue@v3
+        uses: actions/github-script@v6
         with:
-          issue-number: ${{ github.event.issue.number }}
-          comment: "Download complete! Processed securely on self-hosted runner."
+          script: |
+            github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              state: 'closed',
+              state_reason: 'completed'
+            });
+            
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: '✅ **Download Complete!**\n\nThe video has been processed securely by the self-hosted runner and pushed to the repository.'
+            });
