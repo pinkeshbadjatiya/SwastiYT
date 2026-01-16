@@ -11,50 +11,54 @@ permissions:
 jobs:
   download_on_runner:
     if: startsWith(github.event.issue.title, 'Download ')
-
-    # RUN ON YOUR MACHINE
     runs-on: self-hosted
-
+    # environment: secure-runner
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
-
-      # Note: On a self-hosted runner, you usually install dependencies once manually.
-      # But we keep this here to ensure updates are caught.
-      - name: Install Dependencies
+      # STEP REMOVED: actions/setup-python (Not compatible with Ubuntu 25.10)
+      
+      # 1. Install System Dependencies (ffmpeg) and Python venv
+      # We use -y to automatically say "yes" to prompts
+      - name: Install System Dependencies
         run: |
-          pip install yt-dlp
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg python3-venv
+
+      # 2. Create Virtual Environment & Install yt-dlp
+      # This bypasses the "externally-managed-environment" error on new Ubuntu
+      - name: Setup Venv and Install Tools
+        run: |
+          # Create a virtual environment named 'venv'
+          python3 -m venv venv
+          
+          # Upgrade pip inside the venv
+          ./venv/bin/pip install --upgrade pip
+          
+          # Install yt-dlp inside the venv
+          ./venv/bin/pip install yt-dlp
 
       - name: Validate and Download
         run: |
           ISSUE_TITLE="${{ github.event.issue.title }}"
-          
-          # Strip prefix
           VIDEO_ID=$(echo "${ISSUE_TITLE#"Download "}" | xargs)
           
-          # --- SECURITY STEP: STRICT INPUT VALIDATION ---
-          # We use Regex to ensure the ID is EXACTLY 11 characters (letters, numbers, _, -)
-          # This prevents anyone from injecting commands like "; rm -rf /"
+          # Security: Regex Check (Must be exactly 11 chars)
           if [[ ! "$VIDEO_ID" =~ ^[a-zA-Z0-9_-]{11}$ ]]; then
-            echo "::error::Security Alert: Invalid Video ID format detected: $VIDEO_ID"
+            echo "::error::Security Alert: Invalid Video ID format: $VIDEO_ID"
             exit 1
           fi
-          # ----------------------------------------------
           
           VIDEO_URL="https://www.youtube.com/watch?v=${VIDEO_ID}"
-          
           echo "Security Check Passed. Downloading: $VIDEO_ID"
-          python download_video.py "$VIDEO_URL"
+          
+          # CRITICAL: We run python using the VENV executable
+          ./venv/bin/python download_video.py "$VIDEO_URL"
 
       - name: Commit and Push Video
         run: |
-          # Since this is your own machine, git might already be configured, 
-          # but we set local config just for this action to be safe.
           git config user.name "Self-Hosted Runner"
           git config user.email "runner@local"
           
@@ -64,7 +68,6 @@ jobs:
             echo "No changes to commit"
           else
             git commit -m "Add video from Issue #${{ github.event.issue.number }}"
-            # We use the GITHUB_TOKEN to push, so we don't need your personal SSH keys
             git push
           fi
 
