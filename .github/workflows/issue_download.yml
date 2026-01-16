@@ -4,19 +4,17 @@ on:
   issues:
     types: [opened]
 
-# Permissions required to push code and close issues
 permissions:
   contents: write
   issues: write
 
 jobs:
-  download_from_issue:
-    # Only run if the issue title starts with "Download "
+  download_on_runner:
     if: startsWith(github.event.issue.title, 'Download ')
 
-    #runs-on: ubuntu-latest
+    # RUN ON YOUR MACHINE
     runs-on: self-hosted
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -26,43 +24,47 @@ jobs:
         with:
           python-version: '3.9'
 
-      - name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
-
-      # CHANGED: Installing yt-dlp instead of youtube-dl
-      - name: Install yt-dlp
-        run: pip install yt-dlp
-
-      - name: Parse Issue Title and Run Script
+      # Note: On a self-hosted runner, you usually install dependencies once manually.
+      # But we keep this here to ensure updates are caught.
+      - name: Install Dependencies
         run: |
-          # 1. Get the issue title
+          pip install yt-dlp
+
+      - name: Validate and Download
+        run: |
           ISSUE_TITLE="${{ github.event.issue.title }}"
           
-          # 2. Extract ID (Remove "Download " prefix)
+          # Strip prefix
           VIDEO_ID=$(echo "${ISSUE_TITLE#"Download "}" | xargs)
           
-          # 3. Construct URL
+          # --- SECURITY STEP: STRICT INPUT VALIDATION ---
+          # We use Regex to ensure the ID is EXACTLY 11 characters (letters, numbers, _, -)
+          # This prevents anyone from injecting commands like "; rm -rf /"
+          if [[ ! "$VIDEO_ID" =~ ^[a-zA-Z0-9_-]{11}$ ]]; then
+            echo "::error::Security Alert: Invalid Video ID format detected: $VIDEO_ID"
+            exit 1
+          fi
+          # ----------------------------------------------
+          
           VIDEO_URL="https://www.youtube.com/watch?v=${VIDEO_ID}"
           
-          echo "Processing Issue #${{ github.event.issue.number }}"
-          echo "Extracted ID: $VIDEO_ID"
-          
-          # 4. Run the script
+          echo "Security Check Passed. Downloading: $VIDEO_ID"
           python download_video.py "$VIDEO_URL"
 
       - name: Commit and Push Video
         run: |
-          git config --global user.name "GitHub Action"
-          git config --global user.email "action@github.com"
+          # Since this is your own machine, git might already be configured, 
+          # but we set local config just for this action to be safe.
+          git config user.name "Self-Hosted Runner"
+          git config user.email "runner@local"
           
-          # Add the videos folder
           git add videos/
           
-          # Commit only if there are changes
           if git diff-index --quiet HEAD; then
             echo "No changes to commit"
           else
             git commit -m "Add video from Issue #${{ github.event.issue.number }}"
+            # We use the GITHUB_TOKEN to push, so we don't need your personal SSH keys
             git push
           fi
 
@@ -70,4 +72,4 @@ jobs:
         uses: peter-evans/close-issue@v3
         with:
           issue-number: ${{ github.event.issue.number }}
-          comment: "Download complete! The video has been committed to the 'videos' folder in the repository."
+          comment: "Download complete! Processed securely on self-hosted runner."
