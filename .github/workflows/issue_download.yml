@@ -13,7 +13,9 @@ jobs:
   download_from_issue:
     # Only run if the issue title starts with "Download "
     if: startsWith(github.event.issue.title, 'Download ')
-    runs-on: ubuntu-latest
+
+    #runs-on: ubuntu-latest
+    runs-on: self-hosted
     
     steps:
       - name: Checkout code
