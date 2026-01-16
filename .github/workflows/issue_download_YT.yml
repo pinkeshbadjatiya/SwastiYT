@@ -52,82 +52,31 @@ jobs:
           fi
 
       # ---------------------------------------------------------
-      # NEW STEP: CREATE RELEASE
+      # FIXED RELEASE STEPS
       # ---------------------------------------------------------
-      - name: Create Release
-        if: success()
-        # We need the ID for the URL, so we extract it from the issue data file
-        run: |
-          # Extract ID using grep (Find the line after "#### id ####")
-          VIDEO_ID=$(grep -A 1 "#### id ####" issue_data.txt | tail -n 1 | xargs)
-          echo "Detected Video ID: $VIDEO_ID"
-          
-          # Construct the exact URL required
-          RELEASE_NAME="https://github.com/pinkeshbadjatiya/SwastiYT/blob/main/videos/${VIDEO_ID}.mp4"
-          
-          # Use the 'gh' cli (which is installed on the runner via actions/checkout or usually available)
-          # OR use the standard action (Recommended for stability)
-          
-        # We use a specific action to make release creation easier
-        uses: softprops/action-gh-release@v1
-        with:
-          # Unique tag for the release
-          tag_name: video-${{ github.event.issue.number }}
-          
-          # The Name is the EXACT URL as requested
-          name: https://github.com/pinkeshbadjatiya/SwastiYT/blob/main/videos/${{ env.VIDEO_ID }}.mp4
-          
-          # We attach the video file so it is downloadable from the release
-          files: videos/*.mp4
-          
-          # Note: We need to dynamically set the name/file in a way that captures the ID.
-          # Since 'with' doesn't support shell commands easily, we do a pre-step to set ENV vars.
-
-      # REVISED RELEASE LOGIC (Cleaner implementation)
-      - name: Prepare and Create Release
-        if: success()
-        uses: softprops/action-gh-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          # We use the issue number for the tag to ensure uniqueness per request
-          tag_name: video-${{ github.event.issue.number }}
-          # We use dynamic variable substitution for the ID
-          # Note: Since we can't easily grep inside the 'with' block, we rely on the file matching
-          files: videos/*.mp4 
-          
-      # ---------------------------------------------------------
-      # CORRECTED RELEASE STEP WITH ID EXTRACTION
-      # ---------------------------------------------------------
-      - name: Extract ID and Publish Release
+      
+      # Step 1: Extract ID and save it to GITHUB_ENV so next step can see it
+      - name: Extract Video ID
         if: success()
         run: |
-          # 1. Extract ID
+          # Grep the ID from the file we parsed earlier
           VIDEO_ID=$(grep -A 1 "#### id ####" issue_data.txt | tail -n 1 | xargs)
           
-          # 2. Define Release URL
-          RELEASE_URL="https://github.com/pinkeshbadjatiya/SwastiYT/blob/main/videos/${VIDEO_ID}.mp4"
+          echo "Found Video ID: $VIDEO_ID"
           
-          echo "Creating release with name: $RELEASE_URL"
-          
-          # 3. Create Release using GitHub CLI (Pre-installed on most runners)
-          # If gh cli is not on your self-hosted runner, install it or use the softprops action above.
-          # Assuming you installed gh in setup-runner.sh or it came with the runner image.
-          
-          # Since 'gh' might be missing on custom self-hosted, let's use the 'softprops' action 
-          # but pass the ID via GITHUB_ENV to make it accessible.
+          # Write to GITHUB_ENV to make it available to the next step
           echo "VIDEO_ID=$VIDEO_ID" >> $GITHUB_ENV
 
-      - name: Finalize Release
+      # Step 2: Create the Release using the ID variable
+      - name: Create Release
         if: success()
         uses: softprops/action-gh-release@v1
         with:
           tag_name: video-${{ env.VIDEO_ID }}
-          # The exact name you asked for:
+          # The exact name you requested
           name: https://github.com/pinkeshbadjatiya/SwastiYT/blob/main/videos/${{ env.VIDEO_ID }}.mp4
           files: videos/${{ env.VIDEO_ID }}.mp4
-          body: "Auto-generated release for ID: ${{ env.VIDEO_ID }}"
-
+          body: "Auto-generated release for Video ID: ${{ env.VIDEO_ID }}"
 
       # ---------------------------------------------------------
       # STATUS HANDLING STEPS
