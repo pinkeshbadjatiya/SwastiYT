@@ -66,7 +66,7 @@ jobs:
         if: success()
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: video-${{ env.VIDEO_ID }}
+          tag_name: ${{ env.VIDEO_ID }}
           name: https://github.com/pinkeshbadjatiya/SwastiYT/blob/main/videos/${{ env.VIDEO_ID }}.mp4
           files: videos/${{ env.VIDEO_ID }}.mp4
           
