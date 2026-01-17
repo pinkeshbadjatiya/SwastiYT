@@ -66,10 +66,13 @@ jobs:
         if: success()
         uses: softprops/action-gh-release@v1
         with:
+
+          ## NOTE: Tag Name used by Zapier Facebook page release to create a reels URL, so don't change this
           tag_name: ${{ env.VIDEO_ID }}
           name: https://github.com/pinkeshbadjatiya/SwastiYT/blob/main/videos/${{ env.VIDEO_ID }}.mp4
           files: videos/${{ env.VIDEO_ID }}.mp4
-          
+
+          ## NOTE: "body" used by Zapier Instagram release to create the instagram body, so don't change this
           # This pulls the content (Title + Desc) from the file
           body_path: release_body.txt
 
