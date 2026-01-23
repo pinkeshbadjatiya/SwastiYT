@@ -25,10 +25,14 @@ def parse_issue_body(file_path):
 
 def save_metadata(data, folder):
     video_id = data.get("id")
+    title = data.get("title", "No Title Found")
+    description = data.get("description", "")
+
     if not video_id:
+        print("Error: Video ID missing in issue data.")
         return
 
-    # 1. Save JSON Metadata
+    # 1. Save JSON Metadata for record-keeping
     json_path = os.path.join(folder, f"{video_id}.json")
     try:
         with open(json_path, 'w', encoding='utf-8') as f:
@@ -37,26 +41,21 @@ def save_metadata(data, folder):
     except Exception as e:
         print(f"Error saving metadata: {e}")
 
-    # 2. Save Release Body (Instagram Caption)
-    # Format: Title + Blank Line + Description
-    title = data.get("title", "")
-    description = data.get("description", "")
-    caption = f"{title}\n\n{description}"
-    
-    try:
-        with open("release_body.txt", "w", encoding="utf-8") as f:
-            f.write(caption)
-        print("Created release_body.txt")
-    except Exception as e:
-        print(f"Error saving release body: {e}")
+    # 2. Save individual text files for GitHub Workflow/Zapier access
+    files_to_create = {
+        "video_id.txt": video_id,
+        "video_title.txt": title,
+        "video_description.txt": description,
+        "release_body.txt": f"{title}\n\n{description}" # Used for Instagram Body
+    }
 
-    # 3. Save Video ID to a file (for the Workflow to read easily)
-    try:
-        with open("video_id.txt", "w", encoding="utf-8") as f:
-            f.write(video_id)
-        print("Created video_id.txt")
-    except Exception as e:
-        print(f"Error saving video_id.txt: {e}")
+    for filename, content in files_to_create.items():
+        try:
+            with open(filename, "w", encoding="utf-8") as f:
+                f.write(content)
+            print(f"Created {filename}")
+        except Exception as e:
+            print(f"Error saving {filename}: {e}")
 
 def download_video(issue_data):
     video_url = issue_data.get("url")
@@ -66,7 +65,6 @@ def download_video(issue_data):
         print("Error: 'url' field not found.")
         sys.exit(1)
 
-    # Output folders
     base_dir = os.getcwd()
     videos_folder = os.path.join(base_dir, "videos")
     metadata_folder = os.path.join(base_dir, "metadata")
@@ -75,7 +73,7 @@ def download_video(issue_data):
         if not os.path.exists(folder):
             os.makedirs(folder)
 
-    # Save all helper files
+    # Save all helper files (ID, Title, Description, etc.)
     save_metadata(issue_data, metadata_folder)
 
     # Check existence
