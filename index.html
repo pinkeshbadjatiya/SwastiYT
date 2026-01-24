@@ -24,6 +24,10 @@
         .btn-github { background-color: var(--accent); color: #ffffff; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; font-weight: 600; transition: all 0.2s ease; }
         .btn-github:hover:not(:disabled) { background-color: #2ea44f; transform: translateY(-1px); }
         .btn-cancel { background-color: #da3633; color: white; border: none; border-radius: 8px; font-size: 0.75rem; padding: 0.4rem 0.8rem; }
+        .btn-retry { background-color: transparent; color: #58a6ff; border: 1px solid #58a6ff; border-radius: 8px; font-size: 0.75rem; padding: 0.4rem 0.8rem; margin-right: 5px; }
+        .btn-retry:hover { background: #58a6ff; color: white; }
+        .btn-cleanup { background-color: transparent; color: #f85149; border: 1px solid #f85149; border-radius: 8px; font-size: 0.75rem; padding: 0.4rem 0.8rem; }
+        .btn-cleanup:hover { background: #f85149; color: white; }
         .form-control { background-color: var(--bs-body-bg); border: 1px solid var(--border-color); color: white !important; }
         .status-pill { font-size: 0.65rem; font-weight: 700; padding: 0.4em 0.8em; border-radius: 20px; }
         .pulse-downloading { animation: pulse-blue 2s infinite; }
@@ -120,7 +124,6 @@
 <script>
     const GH_OWNER = 'pinkeshbadjatiya';
     const GH_REPO  = 'SwastiYT';
-
     const _p1 = 'Z2l0aHViX3BhdF8xMUFEUktTR0Ewenc4bEZQM3';
     const _p2 = 'RvTWhZX2UzeUcxdmJvRFdiQUh2Vmg3VmhNeHdl';
     const _p3 = 'QWEyZTRtUXJMa2J4U2VhWlk0MEFTSDU0VUJSTEMxOG5tSklJ';
@@ -129,7 +132,7 @@
 
     let allData = [];
 
-    // --- DEBUG LOGGING HELPER ---
+    // --- ROBUST LOGGER (DO NOT REMOVE) ---
     const logger = {
         info: (msg, data = "") => console.log(`%c[INFO] ${msg}`, "color: #58a6ff; font-weight: bold", data),
         success: (msg) => console.log(`%c[SUCCESS] ${msg}`, "color: #2ea44f; font-weight: bold"),
@@ -143,7 +146,7 @@
             const theme = $('html').attr('data-bs-theme') === 'dark' ? 'light' : 'dark';
             $('html').attr('data-bs-theme', theme);
         });
-        $('#start-download-btn').on('click', triggerDownload);
+        $('#start-download-btn').on('click', () => triggerDownload($('#yt-url-input').val().trim()));
         $('#table-search').on('keyup', function() {
             const val = $(this).val().toLowerCase();
             $("#tracker-body tr").filter(function() {
@@ -152,14 +155,13 @@
         });
     });
 
-    async function triggerDownload() {
-        const url = $('#yt-url-input').val().trim();
+    async function triggerDownload(url) {
+        if (!url) return alert("Please enter a YouTube URL.");
         const btn = $('#start-download-btn');
         const msg = $('#trigger-msg');
-        if (!url) return alert("Please enter a YouTube URL.");
         
         btn.prop('disabled', true).text('Requesting...');
-        logger.info("Triggering new download for:", url);
+        logger.info("Triggering acquisition for:", url);
 
         try {
             await $.ajax({
@@ -168,13 +170,13 @@
                 headers: { 'Authorization': `token ${getAuth()}`, 'Content-Type': 'application/json' },
                 data: JSON.stringify({ title: `Download ${url}`, body: url, labels: ['automation'] })
             });
-            logger.success("Issue created successfully");
+            logger.success("New acquisition issue created.");
             $('#yt-url-input').val('');
-            msg.removeClass('text-danger').addClass('text-success').text('✅ Request submitted! Refreshing...').show();
+            msg.removeClass('text-danger').addClass('text-success').text('✅ Task added to queue.').show();
             setTimeout(refreshAll, 1500);
         } catch (e) {
-            logger.error("Failed to create issue", e);
-            msg.removeClass('text-success').addClass('text-danger').text('❌ Error triggering download.').show();
+            logger.error("Acquisition trigger failed", e);
+            msg.removeClass('text-success').addClass('text-danger').text('❌ Acquisition failed to start.').show();
         } finally {
             btn.prop('disabled', false).text('Start Download');
         }
@@ -183,7 +185,7 @@
     async function refreshAll() {
         const headers = { 'Authorization': `token ${getAuth()}` };
         $('#tracker-body').html('<tr><td colspan="5" class="text-center py-5"><div class="spinner-border text-primary"></div></td></tr>');
-        logger.info("Starting global refresh...");
+        logger.info("Refreshing local state from GitHub API...");
 
         try {
             const [metaRes, releaseRes, issuesRes, runsRes] = await Promise.all([
@@ -193,28 +195,23 @@
                 $.ajax({ url: `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/actions/runs?status=in_progress`, headers })
             ]);
 
-            logger.info("Metadata files found:", metaRes.length);
-            logger.info("Open issues found:", issuesRes.length);
-
             const postedIds = releaseRes.map(r => r.tag_name);
             const activeRuns = runsRes.workflow_runs;
             allData = [];
 
-            // 1. Process Completed Files
+            // 1. Process Completed
             const fetchPromises = metaRes.filter(f => f.name.endsWith('.json')).map(file => {
                 return $.getJSON(file.download_url).then(data => {
                     data.isPosted = postedIds.includes(data.id);
                     data.status = 'COMPLETED';
                     allData.push(data);
-                }).catch(e => logger.error(`Failed to parse ${file.name}`, e));
+                });
             });
 
-            // 2. Process Downloading (Issues) - FIXED NULL ERROR HERE
+            // 2. Process Queue
             issuesRes.forEach(issue => {
-                logger.info(`Processing issue #${issue.number}: ${issue.title}`);
-                
-                // Safe extraction from body or title
-                const contentToSearch = (issue.body || "") + " " + issue.title;
+                const body = issue.body || "";
+                const contentToSearch = body + " " + issue.title;
                 const ytIdMatch = contentToSearch.match(/(?:v=|\/be\/|embed\/|shorts\/|Download\s)([^&?\s-]+)/);
                 const ytId = ytIdMatch ? ytIdMatch[1] : 'PENDING';
                 
@@ -223,13 +220,18 @@
                     (run.display_title && run.display_title.includes(ytId))
                 );
 
+                const isActuallyRunning = !!matchedRun;
+                logger.info(`Task #${issue.number} state:`, isActuallyRunning ? "Active Run" : "Stalled/Failed");
+
                 allData.push({
                     id: ytId,
                     title: issue.title,
                     published_date: issue.created_at,
-                    thumbnail: (ytId !== 'PENDING' && ytId.length > 5) ? `https://i.ytimg.com/vi/${ytId}/mqdefault.jpg` : '',
-                    status: 'DOWNLOADING',
-                    runId: matchedRun ? matchedRun.id : null,
+                    thumbnail: (ytId !== 'PENDING') ? `https://i.ytimg.com/vi/${ytId}/mqdefault.jpg` : 'https://via.placeholder.com/100x56?text=Pending',
+                    status: isActuallyRunning ? 'DOWNLOADING' : 'FAILED',
+                    runId: isActuallyRunning ? matchedRun.id : null,
+                    issueNumber: issue.number,
+                    originalUrl: body, // Keep for Retry logic
                     isPosted: false
                 });
             });
@@ -238,11 +240,11 @@
             allData.sort((a,b) => new Date(b.published_date) - new Date(a.published_date));
             renderTable();
             $('#social-count').text(`${allData.filter(d=>d.isPosted).length} / ${allData.length}`);
-            logger.success("Table refresh complete.");
+            logger.success("State sync complete.");
 
         } catch (err) {
-            logger.error("Global refresh failed", err);
-            $('#tracker-body').html('<tr><td colspan="5" class="text-center text-danger">Fetch Error. Check console (F12) for details.</td></tr>');
+            logger.error("Sync Failure", err);
+            $('#tracker-body').html('<tr><td colspan="5" class="text-center text-danger">Fetch Error. Check F12 Logs.</td></tr>');
         }
     }
 
@@ -253,8 +255,15 @@
 
             if (data.status === 'DOWNLOADING') {
                 statusHtml = `<span class="badge status-pill bg-info-subtle text-info border border-info pulse-downloading">DOWNLOADING</span>`;
-                actionHtml = data.runId ? `<button class="btn btn-cancel" onclick="cancelRun(${data.runId})">Stop Task</button>` : `<small class="text-secondary">Queuing...</small>`;
-            } else {
+                actionHtml = `<button class="btn btn-cancel" onclick="cancelRun(${data.runId})">Stop Task</button>`;
+            } 
+            else if (data.status === 'FAILED') {
+                statusHtml = `<span class="badge status-pill bg-danger-subtle text-danger border border-danger">FAILED / CANCELLED</span>`;
+                actionHtml = `
+                    <button class="btn btn-retry" onclick="retryTask(${data.issueNumber}, '${data.originalUrl}')">Retry</button>
+                    <button class="btn btn-cleanup" onclick="closeIssue(${data.issueNumber})">Dismiss</button>`;
+            }
+            else {
                 statusHtml = `<span class="badge status-pill ${data.isPosted ? 'bg-success-subtle text-success border border-success' : 'bg-warning-subtle text-warning border border-warning'}">
                                 ${data.isPosted ? 'PUBLISHED' : 'READY'}</span>`;
                 actionHtml = `<button class="btn btn-sm ${data.isPosted ? 'btn-outline-secondary' : 'btn-github'} action-btn" data-id="${data.id}" ${data.isPosted ? 'disabled' : ''}>
@@ -263,7 +272,7 @@
 
             return `
                 <tr>
-                    <td><img src="${data.thumbnail || 'https://via.placeholder.com/100x56?text=Pending'}" class="thumbnail-mini preview-trigger" data-id="${data.id}"></td>
+                    <td><img src="${data.thumbnail}" class="thumbnail-mini preview-trigger" data-id="${data.id}"></td>
                     <td>
                         <div class="fw-bold text-white text-truncate" style="max-width: 280px;">${data.title}</div>
                         <div class="small text-secondary" style="font-size:0.7rem;">${data.id}</div>
@@ -273,22 +282,60 @@
                     <td class="text-end">${actionHtml}</td>
                 </tr>`;
         });
-        $('#tracker-body').html(rows.length ? rows.join('') : '<tr><td colspan="5" class="text-center py-4">No content found.</td></tr>');
+        $('#tracker-body').html(rows.join(''));
+    }
+
+    async function retryTask(oldIssueNumber, url) {
+        if (!confirm("Retry this acquisition? This will close the current error and start a new task.")) return;
+        logger.info(`Retrying task from issue #${oldIssueNumber}`);
+        try {
+            // 1. Close the old failed issue
+            await $.ajax({
+                url: `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/issues/${oldIssueNumber}`,
+                method: 'PATCH',
+                headers: { 'Authorization': `token ${getAuth()}`, 'Content-Type': 'application/json' },
+                data: JSON.stringify({ state: 'closed' })
+            });
+            // 2. Trigger new download
+            await triggerDownload(url);
+        } catch (e) { logger.error("Retry flow failed", e); }
+    }
+
+    async function closeIssue(issueNumber) {
+        if (!confirm("Dismiss failure?")) return;
+        try {
+            await $.ajax({
+                url: `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/issues/${issueNumber}`,
+                method: 'PATCH',
+                headers: { 'Authorization': `token ${getAuth()}`, 'Content-Type': 'application/json' },
+                data: JSON.stringify({ state: 'closed' })
+            });
+            refreshAll();
+        } catch (e) { logger.error("Dismiss failed", e); }
+    }
+
+    async function cancelRun(runId) {
+        if (!confirm("Stop running Action?")) return;
+        try {
+            await $.ajax({
+                url: `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/actions/runs/${runId}/cancel`,
+                method: 'POST',
+                headers: { 'Authorization': `token ${getAuth()}` }
+            });
+            refreshAll();
+        } catch (e) { logger.error("Cancel failed", e); }
     }
 
     $(document).on('click', '.preview-trigger', function() {
         const video = allData.find(v => v.id === $(this).data('id'));
-        if (!video || video.status === 'DOWNLOADING') return;
-        
+        if (!video || video.status !== 'COMPLETED') return;
         $('#modalTitle').text(video.title);
         $('#modalImg').attr('src', video.thumbnail);
-        $('#modalDesc').text(video.description || "Metadata exists but description is empty.");
+        $('#modalDesc').text(video.description);
         $('#modalMeta').html(`ID: ${video.id} | Date: ${new Date(video.published_date).toLocaleDateString()}`);
-        
         const btn = $('#modalActionBtn');
         if (video.isPosted) btn.prop('disabled', true).text('Already Synced');
         else btn.prop('disabled', false).text('Deploy Now').off('click').on('click', () => triggerDeploy(video.id, video.title));
-
         new bootstrap.Modal('#previewModal').show();
     });
 
@@ -298,40 +345,15 @@
     });
 
     function triggerDeploy(id, title) {
-        if (!confirm(`Trigger deployment for "${title}"?`)) return;
-        logger.info("Deploying video ID:", id);
+        if (!confirm(`Trigger social deployment for "${title}"?`)) return;
         $.ajax({
             url: `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/releases`,
             method: 'POST',
             headers: { 'Authorization': `token ${getAuth()}`, 'Content-Type': 'application/json' },
-            data: JSON.stringify({ tag_name: id, name: title, body: `Automated Social Post for ${id}` }),
-            success: () => { 
-                logger.success("Release created successfully");
-                bootstrap.Modal.getInstance('#previewModal')?.hide(); 
-                refreshAll(); 
-            },
-            error: (e) => {
-                logger.error("Release creation failed", e);
-                alert("Deployment failed.");
-            }
+            data: JSON.stringify({ tag_name: id, name: title, body: `OmniChannel Post Triggered` }),
+            success: () => { refreshAll(); },
+            error: (e) => { logger.error("Deploy trigger failed", e); alert("Deployment failed."); }
         });
-    }
-
-    async function cancelRun(runId) {
-        if (!confirm("Stop this download task?")) return;
-        logger.info("Cancelling Action Run ID:", runId);
-        try {
-            await $.ajax({
-                url: `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/actions/runs/${runId}/cancel`,
-                method: 'POST',
-                headers: { 'Authorization': `token ${getAuth()}` }
-            });
-            logger.success("Cancel request sent");
-            refreshAll();
-        } catch (e) { 
-            logger.error("Cancel failed", e);
-            alert("Cancel failed."); 
-        }
     }
 </script>
 </body>
