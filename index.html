@@ -14,6 +14,7 @@
             --accent: #238636;
             --border-color: #30363d;
             --text-secondary: #8b949e;
+            --title-color: #ffffff;
         }
 
         [data-bs-theme="light"] {
@@ -23,6 +24,7 @@
             --accent: #2da44f;
             --border-color: #d0d7de;
             --text-secondary: #57606a;
+            --title-color: #24292f;
         }
 
         body { 
@@ -63,8 +65,46 @@
             border: 1px solid var(--border-color); 
         }
 
+        .video-title {
+            color: var(--title-color);
+            font-weight: bold;
+        }
+
         .btn-github { background-color: var(--accent); color: #ffffff; border-radius: 8px; font-weight: 600; }
         .btn-github:hover { background-color: #2c974b; color: white; }
+
+        /* Button CSS Fixes */
+        .btn-retry { 
+            border: 1px solid #58a6ff; 
+            color: #58a6ff; 
+            font-size: 0.7rem; 
+            padding: 4px 10px; 
+            border-radius: 6px; 
+            background: transparent;
+            font-weight: bold;
+            margin-right: 4px;
+        }
+        .btn-retry:hover { background: #58a6ff; color: white; }
+
+        .btn-cleanup { 
+            border: 1px solid #f85149; 
+            color: #f85149; 
+            font-size: 0.7rem; 
+            padding: 4px 10px; 
+            border-radius: 6px; 
+            background: transparent;
+            font-weight: bold;
+        }
+        .btn-cleanup:hover { background: #f85149; color: white; }
+
+        .btn-cancel { 
+            background-color: #da3633; 
+            color: white; 
+            border: none; 
+            border-radius: 6px; 
+            font-size: 0.75rem; 
+            padding: 4px 12px;
+        }
         
         .pulse-downloading { animation: pulse-blue 2s infinite; }
         @keyframes pulse-blue { 
@@ -107,7 +147,7 @@
             <input type="text" id="table-search" class="form-control" placeholder="Filter by title, ID, or keywords...">
         </div>
         <div class="col-md-4">
-            <div class="card p-2 px-3 text-center bg-dark">
+            <div class="card p-2 px-3 text-center">
                 <span class="small text-secondary text-uppercase" style="font-size: 0.65rem;">Content Synced</span>
                 <span id="social-count" class="h5 m-0 fw-bold text-success">--</span>
             </div>
@@ -181,7 +221,6 @@
     };
 
     $(document).ready(function() {
-        // --- PERSISTENT THEME LOGIC ---
         const savedTheme = localStorage.getItem('theme') || 'dark';
         applyTheme(savedTheme);
 
@@ -213,10 +252,8 @@
         if (!url) return alert("Please enter a YouTube URL.");
         const btn = $('#start-download-btn');
         const msg = $('#trigger-msg');
-        
         btn.prop('disabled', true).text('Requesting...');
         logger.info("Triggering acquisition for:", url);
-
         try {
             await $.ajax({
                 url: `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/issues`,
@@ -240,7 +277,6 @@
         const headers = { 'Authorization': `token ${getAuth()}` };
         $('#tracker-body').html('<tr><td colspan="5" class="text-center py-5"><div class="spinner-border text-primary"></div></td></tr>');
         logger.info("Refreshing local state from GitHub API...");
-
         try {
             const [metaRes, releaseRes, issuesRes, runsRes] = await Promise.all([
                 $.ajax({ url: `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/metadata`, headers }),
@@ -248,12 +284,9 @@
                 $.ajax({ url: `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/issues?state=open`, headers }),
                 $.ajax({ url: `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/actions/runs?status=in_progress`, headers })
             ]);
-
             const postedIds = releaseRes.map(r => r.tag_name);
             const activeRuns = runsRes.workflow_runs;
             allData = [];
-
-            // 1. Process Completed
             const fetchPromises = metaRes.filter(f => f.name.endsWith('.json')).map(file => {
                 return $.getJSON(file.download_url).then(data => {
                     data.isPosted = postedIds.includes(data.id);
@@ -261,22 +294,17 @@
                     allData.push(data);
                 });
             });
-
-            // 2. Process Queue
             issuesRes.forEach(issue => {
                 const body = issue.body || "";
                 const contentToSearch = body + " " + issue.title;
                 const ytIdMatch = contentToSearch.match(/(?:v=|\/be\/|embed\/|shorts\/|Download\s)([^&?\s-]+)/);
                 const ytId = ytIdMatch ? ytIdMatch[1] : 'PENDING';
-                
                 const matchedRun = activeRuns.find(run => 
                     (run.display_title && run.display_title.includes(issue.number)) || 
                     (run.display_title && run.display_title.includes(ytId))
                 );
-
                 const isActuallyRunning = !!matchedRun;
                 logger.info(`Task #${issue.number} state:`, isActuallyRunning ? "Active Run" : "Stalled/Failed");
-
                 allData.push({
                     id: ytId,
                     title: issue.title,
@@ -285,17 +313,15 @@
                     status: isActuallyRunning ? 'DOWNLOADING' : 'FAILED',
                     runId: isActuallyRunning ? matchedRun.id : null,
                     issueNumber: issue.number,
-                    originalUrl: body, // Keep for Retry logic
+                    originalUrl: body,
                     isPosted: false
                 });
             });
-
             await Promise.all(fetchPromises);
             allData.sort((a,b) => new Date(b.published_date) - new Date(a.published_date));
             renderTable();
             $('#social-count').text(`${allData.filter(d=>d.isPosted).length} / ${allData.length}`);
             logger.success("State sync complete.");
-
         } catch (err) {
             logger.error("Sync Failure", err);
             $('#tracker-body').html('<tr><td colspan="5" class="text-center text-danger">Fetch Error. Check F12 Logs.</td></tr>');
@@ -304,9 +330,7 @@
 
     function renderTable() {
         const rows = allData.map(data => {
-            let statusHtml = '';
-            let actionHtml = '';
-
+            let statusHtml = '', actionHtml = '';
             if (data.status === 'DOWNLOADING') {
                 statusHtml = `<span class="badge status-pill bg-info-subtle text-info border border-info pulse-downloading">DOWNLOADING</span>`;
                 actionHtml = `<button class="btn btn-cancel" onclick="cancelRun(${data.runId})">Stop Task</button>`;
@@ -323,12 +347,11 @@
                 actionHtml = `<button class="btn btn-sm ${data.isPosted ? 'btn-outline-secondary' : 'btn-github'} action-btn" data-id="${data.id}" ${data.isPosted ? 'disabled' : ''}>
                                 ${data.isPosted ? 'Synced' : 'Deploy'}</button>`;
             }
-
             return `
                 <tr>
                     <td><img src="${data.thumbnail}" class="thumbnail-mini preview-trigger" data-id="${data.id}"></td>
                     <td>
-                        <div class="fw-bold text-white text-truncate" style="max-width: 280px;">${data.title}</div>
+                        <div class="video-title text-truncate" style="max-width: 280px;">${data.title}</div>
                         <div class="small text-secondary" style="font-size:0.7rem;">${data.id}</div>
                     </td>
                     <td class="hide-mobile small text-secondary">${new Date(data.published_date).toLocaleDateString()}</td>
@@ -340,17 +363,15 @@
     }
 
     async function retryTask(oldIssueNumber, url) {
-        if (!confirm("Retry this acquisition? This will close the current error and start a new task.")) return;
+        if (!confirm("Retry this acquisition?")) return;
         logger.info(`Retrying task from issue #${oldIssueNumber}`);
         try {
-            // 1. Close the old failed issue
             await $.ajax({
                 url: `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/issues/${oldIssueNumber}`,
                 method: 'PATCH',
                 headers: { 'Authorization': `token ${getAuth()}`, 'Content-Type': 'application/json' },
                 data: JSON.stringify({ state: 'closed' })
             });
-            // 2. Trigger new download
             await triggerDownload(url);
         } catch (e) { logger.error("Retry flow failed", e); }
     }
