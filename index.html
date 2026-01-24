@@ -1,22 +1,260 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>SwastiYT Manager</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SwastiYT Dashboard</title>
     <style>
-        body { font-family: sans-serif; line-height: 1.6; max-width: 800px; margin: 40px auto; padding: 0 20px; }
-        .button { background: #2ea44f; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; }
+        :root {
+            --primary: #2da44e;
+            --bg: #0d1117;
+            --card-bg: #161b22;
+            --text: #c9d1d9;
+            --border: #30363d;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+        }
+
+        h1, h3 { color: #ffffff; }
+        
+        /* Cards */
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        /* Inputs & Buttons */
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            background: #0d1117;
+            border: 1px solid var(--border);
+            color: white;
+            border-radius: 6px;
+            box-sizing: border-box;
+        }
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        button:hover { opacity: 0.9; }
+        button:disabled { background-color: #555; cursor: not-allowed; }
+
+        .refresh-btn {
+            background: transparent;
+            border: 1px solid var(--border);
+            padding: 5px 10px;
+        }
+
+        /* Lists */
+        ul { list-style: none; padding: 0; }
+        li {
+            padding: 10px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        li:last-child { border-bottom: none; }
+
+        .status-badge {
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            background: #1f6feb;
+            color: white;
+        }
+        .status-success { background: var(--primary); }
     </style>
 </head>
 <body>
-    <h1>SwastiYT Video Manager</h1>
-    <p>Use this page to manage your YouTube downloads.</p>
-    
-    <h3>Trigger New Download</h3>
-    <p>To download a new video, click below and create a new Issue with the YouTube URL as the title:</p>
-    <a class="button" href="https://github.com/pinkeshbadjatiya/SwastiYT/issues/new">Add New Video URL</a>
 
-    <h3>Current Downloads</h3>
-    <p>You can view the progress of your downloads in the Actions tab:</p>
-    <a href="https://github.com/pinkeshbadjatiya/SwastiYT/actions">View Automation Logs</a>
+    <div class="container">
+        <h1>SwastiYT Manager</h1>
+
+        <div class="card">
+            <h3>📥 New Download</h3>
+            <p style="font-size: 0.9em; color: #8b949e;">Paste a YouTube URL below.</p>
+            <input type="text" id="video-url" placeholder="https://www.youtube.com/watch?v=...">
+            <button id="download-btn" onclick="triggerDownload()">Start Download</button>
+            <div id="msg-area" style="margin-top:10px; font-weight:bold;"></div>
+        </div>
+
+        <div class="card">
+            <div style="display:flex; justify-content:space-between;">
+                <h3>⏳ Queue (Open Issues)</h3>
+                <button class="refresh-btn" onclick="fetchData()">Refresh</button>
+            </div>
+            <ul id="queue-list">
+                <li style="color:#8b949e">Loading...</li>
+            </ul>
+        </div>
+
+        <div class="card">
+            <h3>✅ Completed Library (Releases)</h3>
+            <ul id="library-list">
+                <li style="color:#8b949e">Loading...</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // ⚠️ CONFIGURATION - HARDCODED CREDENTIALS
+        // ==========================================
+        
+        // PASTE YOUR TOKEN BELOW inside the quotes
+        const GH_TOKEN = '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'; 
+        
+        const GH_OWNER = 'pinkeshbadjatiya';
+        const GH_REPO  = 'SwastiYT';
+
+        // ==========================================
+
+        // 1. TRIGGER DOWNLOAD (Creates GitHub Issue)
+        async function triggerDownload() {
+            const url = document.getElementById('video-url').value;
+            const btn = document.getElementById('download-btn');
+            const msg = document.getElementById('msg-area');
+
+            if (!url) {
+                alert("Please enter a URL.");
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerText = "Triggering...";
+            msg.innerText = "";
+
+            try {
+                const issueTitle = `Download ${url}`;
+                
+                const response = await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/issues`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `token ${GH_TOKEN}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        title: issueTitle,
+                        body: url
+                    })
+                });
+
+                if (response.ok) {
+                    msg.style.color = "var(--primary)";
+                    msg.innerText = "Success! Action triggered.";
+                    document.getElementById('video-url').value = "";
+                    setTimeout(fetchData, 1000); // Wait 1s then refresh lists
+                } else {
+                    throw new Error("GitHub API Error: " + response.statusText);
+                }
+            } catch (error) {
+                msg.style.color = "#ff7b72";
+                msg.innerText = "Error: " + error.message;
+                console.error(error);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Start Download";
+            }
+        }
+
+        // 2. FETCH DATA (Issues & Releases)
+        async function fetchData() {
+            // A. Fetch Open Issues (The Queue)
+            try {
+                const issuesRes = await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/issues?state=open`, {
+                    headers: { 'Authorization': `token ${GH_TOKEN}` }
+                });
+                
+                if (!issuesRes.ok) throw new Error("Failed to fetch issues");
+                
+                const issues = await issuesRes.json();
+                const queueList = document.getElementById('queue-list');
+                queueList.innerHTML = "";
+                
+                // Filter issues
+                const activeDownloads = issues.filter(i => i.title.startsWith("Download") || i.title.includes("Failed"));
+
+                if(activeDownloads.length === 0) {
+                    queueList.innerHTML = "<li style='color:#8b949e'>No active downloads.</li>";
+                } else {
+                    activeDownloads.forEach(issue => {
+                        const li = document.createElement('li');
+                        li.innerHTML = `
+                            <span>${issue.title}</span>
+                            <span class="status-badge">Processing</span>
+                            <a href="${issue.html_url}" target="_blank" style="color:#58a6ff; text-decoration:none; margin-left:10px;">Logs</a>
+                        `;
+                        queueList.appendChild(li);
+                    });
+                }
+            } catch (e) { 
+                console.error(e);
+                document.getElementById('queue-list').innerHTML = "<li style='color:#ff7b72'>Error loading queue. Check Token.</li>";
+            }
+
+            // B. Fetch Releases (The Library)
+            try {
+                const releasesRes = await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/releases`, {
+                    headers: { 'Authorization': `token ${GH_TOKEN}` }
+                });
+
+                if (!releasesRes.ok) throw new Error("Failed to fetch releases");
+
+                const releases = await releasesRes.json();
+                const libList = document.getElementById('library-list');
+                libList.innerHTML = "";
+
+                if(releases.length === 0) {
+                    libList.innerHTML = "<li style='color:#8b949e'>No videos found.</li>";
+                } else {
+                    releases.forEach(release => {
+                        const asset = release.assets.find(a => a.name.endsWith('.mp4'));
+                        const downloadUrl = asset ? asset.browser_download_url : '#';
+                        
+                        const li = document.createElement('li');
+                        li.innerHTML = `
+                            <span>${release.name || release.tag_name}</span>
+                            <div>
+                                <span class="status-badge status-success">Done</span>
+                                ${asset ? `<a href="${downloadUrl}" class="status-badge" style="background:#238636; text-decoration:none; margin-left:5px;">Download MP4</a>` : ''}
+                            </div>
+                        `;
+                        libList.appendChild(li);
+                    });
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        // Initialize on load
+        fetchData();
+    </script>
 </body>
 </html>
