@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-bs-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,51 +7,26 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         :root {
-            --bg: #0d1117;
-            --card-bg: #161b22;
-            --text: #c9d1d9;
-            --border: #30363d;
+            --bg-dark: #0d1117;
+            --card-dark: #161b22;
+            --border-dark: #30363d;
         }
 
-        body { 
-            background-color: var(--bg); 
-            color: var(--text);
-            padding-bottom: 50px;
-        }
-
-        .card { 
-            background-color: var(--card-bg); 
-            border: 1px solid var(--border);
-            color: var(--text);
-        }
+        [data-bs-theme="dark"] body { background-color: var(--bg-dark); color: #c9d1d9; }
+        [data-bs-theme="dark"] .card { background-color: var(--card-dark); border-color: var(--border-dark); }
+        [data-bs-theme="dark"] .table { --bs-table-bg: var(--card-dark); --bs-table-border-color: var(--border-dark); }
 
         .thumbnail-mini { 
             width: 80px; 
             border-radius: 4px; 
             aspect-ratio: 16/9;
             object-fit: cover;
+            cursor: pointer;
         }
 
-        .status-pill {
-            font-size: 0.7rem;
-            text-transform: uppercase;
-        }
-
+        .status-pill { font-size: 0.7rem; text-transform: uppercase; }
         .btn-github { background-color: #238636; color: white; border: none; }
         .btn-github:hover { background-color: #2ea44f; color: white; }
-
-        input.form-control {
-            background-color: var(--bg);
-            border: 1px solid var(--border);
-            color: white;
-        }
-
-        input.form-control:focus {
-            background-color: var(--bg);
-            color: white;
-            border-color: #58a6ff;
-            box-shadow: none;
-        }
 
         @media (max-width: 768px) {
             .hide-mobile { display: none; }
@@ -60,37 +35,36 @@
 </head>
 <body>
 
-<nav class="navbar navbar-dark bg-dark mb-4 border-bottom border-secondary">
+<nav class="navbar navbar-expand-lg border-bottom border-secondary mb-4">
     <div class="container">
-        <span class="navbar-brand mb-0 h1">SwastiYT Dash</span>
-        <button id="refresh-btn" class="btn btn-outline-light btn-sm">🔄 Refresh</button>
+        <span class="navbar-brand fw-bold">SwastiYT Dash</span>
+        <div class="d-flex gap-2">
+            <button id="theme-toggle" class="btn btn-outline-secondary btn-sm">🌓 Toggle Theme</button>
+            <button id="refresh-btn" class="btn btn-primary btn-sm">🔄 Refresh</button>
+        </div>
     </div>
 </nav>
 
 <div class="container">
     <div class="row g-3 mb-4">
         <div class="col-md-8">
-            <input type="text" id="table-search" class="form-control" placeholder="Search by video title or ID...">
+            <input type="text" id="table-search" class="form-control" placeholder="Search title, ID, or description...">
         </div>
         <div class="col-md-4 d-flex gap-2">
-            <div class="card flex-fill p-2 text-center small">
-                <div class="text-secondary">Sync</div>
-                <div id="social-count" class="fw-bold">-</div>
-            </div>
-            <div class="card flex-fill p-2 text-center small">
-                <div class="text-secondary">Library</div>
-                <div id="yt-count" class="fw-bold">-</div>
+            <div class="card flex-fill p-2 text-center small shadow-sm">
+                <div class="text-secondary">Sync Rate</div>
+                <div id="social-count" class="fw-bold fs-5">-</div>
             </div>
         </div>
     </div>
 
-    <div class="card shadow-sm">
+    <div class="card shadow-sm overflow-hidden">
         <div class="table-responsive">
-            <table class="table table-dark table-hover mb-0 align-middle">
-                <thead class="table-secondary">
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="table-light">
                     <tr>
                         <th style="width: 100px;">Video</th>
-                        <th>Title</th>
+                        <th>Content Details</th>
                         <th class="hide-mobile">Date</th>
                         <th>Status</th>
                         <th>Action</th>
@@ -99,11 +73,38 @@
                 <tbody id="tracker-body">
                     <tr>
                         <td colspan="5" class="text-center py-5">
-                            <div class="spinner-border spinner-border-sm text-primary"></div>
+                            <div class="spinner-grow text-primary" role="status"></div>
                         </td>
                     </tr>
                 </tbody>
             </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="previewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content shadow">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">Video Title</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-5 mb-3">
+                        <img id="modalImg" src="" class="img-fluid rounded border shadow-sm">
+                        <div class="mt-3 p-2 bg-light text-dark rounded small border" id="modalMeta"></div>
+                    </div>
+                    <div class="col-md-7">
+                        <h6>Description:</h6>
+                        <div id="modalDesc" class="p-3 bg-light text-dark rounded small border overflow-auto" style="max-height: 300px; white-space: pre-wrap;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" id="modalActionBtn" class="btn btn-github">🚀 Post to Socials</button>
+            </div>
         </div>
     </div>
 </div>
@@ -115,11 +116,13 @@
     // Configuration
     const GH_OWNER = 'pinkeshbadjatiya';
     const GH_REPO  = 'SwastiYT';
-    
+
     // ==========================================
     // 🛡️ OBFUSCATED CONFIGURATION
     // ==========================================
     
+    // const GH_TOKEN = atob('-----------------');
+
     // PASTE YOUR TOKEN BELOW inside the quotes
     // const GH_TOKEN = '--------------------------'; 
 
@@ -135,103 +138,131 @@
     const getAuth = () => {
         return atob([_p1, _p2, _p3].join(''));
     };
+    
+    let allData = [];
 
     $(document).ready(function() {
         refreshAll();
 
-        // Refresh button click
         $('#refresh-btn').on('click', refreshAll);
 
-        // Real-time Search Filter
+        // Theme Toggle Logic
+        $('#theme-toggle').on('click', function() {
+            const html = $('html');
+            const currentTheme = html.attr('data-bs-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            html.attr('data-bs-theme', newTheme);
+        });
+
+        // Live Search
         $('#table-search').on('keyup', function() {
-            var value = $(this).val().toLowerCase();
+            const val = $(this).val().toLowerCase();
             $("#tracker-body tr").filter(function() {
-                $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
+                $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
             });
         });
     });
 
     function refreshAll() {
-        const headers = { 'Authorization': `token ${getAuth()}` };
-        
-        // Use jQuery AJAX for better error handling and cleaner code
+        const headers = { 'Authorization': `token ${GH_TOKEN}` };
+        $('#tracker-body').html('<tr><td colspan="5" class="text-center py-5"><div class="spinner-border text-primary"></div></td></tr>');
+
         $.when(
             $.ajax({ url: `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/metadata`, headers }),
             $.ajax({ url: `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/releases`, headers })
         ).done(function(metaData, releaseData) {
-            const metadataFiles = metaData[0];
             const releases = releaseData[0];
             const postedIds = releases.map(r => r.tag_name);
-            
-            let html = "";
-            let socialCount = 0;
+            allData = []; // Clear local cache
 
-            // Process files
-            const fetchPromises = metadataFiles.filter(f => f.name.endsWith('.json')).map(file => {
+            const fetchPromises = metaData[0].filter(f => f.name.endsWith('.json')).map(file => {
                 return $.getJSON(file.download_url).then(data => {
-                    const isPosted = postedIds.includes(data.id);
-                    if (isPosted) socialCount++;
-
-                    return `
-                        <tr>
-                            <td><img src="${data.thumbnail}" class="thumbnail-mini border border-secondary shadow-sm"></td>
-                            <td>
-                                <div class="fw-bold text-white text-truncate" style="max-width: 250px;">${data.title}</div>
-                                <div class="small text-secondary">${data.id}</div>
-                            </td>
-                            <td class="hide-mobile small text-secondary">${new Date(data.published_date).toLocaleDateString()}</td>
-                            <td>
-                                <span class="badge rounded-pill status-pill ${isPosted ? 'bg-success' : 'bg-warning text-dark'}">
-                                    ${isPosted ? 'Posted' : 'Ready'}
-                                </span>
-                            </td>
-                            <td>
-                                <button class="btn btn-sm ${isPosted ? 'btn-outline-secondary' : 'btn-github'} w-100 action-btn" 
-                                        data-id="${data.id}" data-title="${data.title}"
-                                        ${isPosted ? 'disabled' : ''}>
-                                    ${isPosted ? '✓' : 'Post'}
-                                </button>
-                            </td>
-                        </tr>`;
+                    data.isPosted = postedIds.includes(data.id);
+                    allData.push(data);
                 });
             });
 
-            // Wait for all JSON content to be fetched
-            Promise.all(fetchPromises).then(rows => {
-                $('#tracker-body').html(rows.join(''));
-                $('#yt-count').text(rows.length);
-                $('#social-count').text(`${socialCount}/${rows.length}`);
+            Promise.all(fetchPromises).then(() => {
+                // Sort by date newest first
+                allData.sort((a,b) => new Date(b.published_date) - new Date(a.published_date));
+                renderTable();
+                updateStats();
             });
-
-        }).fail(function() {
-            $('#tracker-body').html('<tr><td colspan="5" class="text-center text-danger">API Error - Check configuration.</td></tr>');
         });
     }
 
-    // Event Delegation for the "Post" buttons
+    function renderTable() {
+        const rows = allData.map(data => `
+            <tr>
+                <td><img src="${data.thumbnail}" class="thumbnail-mini preview-trigger" data-id="${data.id}"></td>
+                <td>
+                    <div class="fw-bold text-truncate" style="max-width: 300px;">${data.title}</div>
+                    <div class="small text-secondary">${data.id}</div>
+                </td>
+                <td class="hide-mobile small">${new Date(data.published_date).toLocaleDateString()}</td>
+                <td>
+                    <span class="badge rounded-pill status-pill ${data.isPosted ? 'bg-success' : 'bg-warning text-dark'}">
+                        ${data.isPosted ? 'Posted' : 'Ready'}
+                    </span>
+                </td>
+                <td>
+                    <button class="btn btn-sm ${data.isPosted ? 'btn-outline-secondary' : 'btn-github'} w-100 action-btn" 
+                            data-id="${data.id}" ${data.isPosted ? 'disabled' : ''}>
+                        ${data.isPosted ? '✓' : 'Post'}
+                    </button>
+                </td>
+            </tr>
+        `);
+        $('#tracker-body').html(rows.join(''));
+    }
+
+    function updateStats() {
+        const posted = allData.filter(d => d.isPosted).length;
+        $('#social-count').text(`${posted} / ${allData.length}`);
+    }
+
+    // Modal Preview Logic
+    $(document).on('click', '.preview-trigger', function() {
+        const id = $(this).data('id');
+        const video = allData.find(v => v.id === id);
+        
+        $('#modalTitle').text(video.title);
+        $('#modalImg').attr('src', video.thumbnail);
+        $('#modalDesc').text(video.description || "No description available.");
+        $('#modalMeta').html(`<strong>ID:</strong> ${video.id}<br><strong>Duration:</strong> ${video.duration || 'N/A'}`);
+        
+        const actionBtn = $('#modalActionBtn');
+        if (video.isPosted) {
+            actionBtn.prop('disabled', true).text('Already Posted');
+        } else {
+            actionBtn.prop('disabled', false).text('🚀 Post to Socials').off('click').on('click', () => triggerPost(video.id, video.title));
+        }
+
+        new bootstrap.Modal('#previewModal').show();
+    });
+
     $(document).on('click', '.action-btn', function() {
         const id = $(this).data('id');
-        const title = $(this).data('title');
+        const video = allData.find(v => v.id === id);
+        triggerPost(id, video.title);
+    });
+
+    function triggerPost(id, title) {
+        if (!confirm(`Trigger social posting for "${title}"?`)) return;
         
-        if (!confirm(`Post "${title}" to socials?`)) return;
-
-        $(this).prop('disabled', true).text('...');
-
         $.ajax({
             url: `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/releases`,
             method: 'POST',
-            headers: { 'Authorization': `token ${getAuth()}`, 'Content-Type': 'application/json' },
-            data: JSON.stringify({ tag_name: id, name: title, body: `Automated post from SwastiYT Dash` }),
+            headers: { 'Authorization': `token ${GH_TOKEN}`, 'Content-Type': 'application/json' },
+            data: JSON.stringify({ tag_name: id, name: title, body: `Triggered via Dashboard` }),
             success: function() {
-                alert("Triggered!");
+                bootstrap.Modal.getInstance('#previewModal')?.hide();
+                alert("Workflow Started!");
                 refreshAll();
             },
-            error: function() {
-                alert("Failed to trigger post.");
-                refreshAll();
-            }
+            error: () => alert("Error triggering post.")
         });
-    });
+    }
 </script>
 </body>
 </html>
