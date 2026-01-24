@@ -164,7 +164,7 @@
     });
 
     function refreshAll() {
-        const headers = { 'Authorization': `token ${GH_TOKEN}` };
+        const headers = { 'Authorization': `token ${getAuth()}` };
         $('#tracker-body').html('<tr><td colspan="5" class="text-center py-5"><div class="spinner-border text-primary"></div></td></tr>');
 
         $.when(
@@ -253,7 +253,7 @@
         $.ajax({
             url: `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/releases`,
             method: 'POST',
-            headers: { 'Authorization': `token ${GH_TOKEN}`, 'Content-Type': 'application/json' },
+            headers: { 'Authorization': `token ${getAuth()}`, 'Content-Type': 'application/json' },
             data: JSON.stringify({ tag_name: id, name: title, body: `Triggered via Dashboard` }),
             success: function() {
                 bootstrap.Modal.getInstance('#previewModal')?.hide();
