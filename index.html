@@ -374,7 +374,7 @@
                     id: ytId,
                     title: issue.title,
                     published_date: issue.created_at,
-                    thumbnail: (ytId !== 'PENDING') ? `https://i.ytimg.com/vi/${ytId}/mqdefault.jpg` : 'https://via.placeholder.com/100x56',
+                    thumbnail: (ytId !== 'PENDING') ? `https://i.ytimg.com/vi/${ytId}/maxresdefault.jpg` : 'https://via.placeholder.com/100x56',
                     status: isActuallyRunning ? 'DOWNLOADING' : 'FAILED',
                     runId: isActuallyRunning ? matchedRun.id : null,
                     issueNumber: issue.number,
