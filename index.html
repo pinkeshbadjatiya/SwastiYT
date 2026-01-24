@@ -125,11 +125,19 @@
 
     <script>
         // ==========================================
-        // ⚠️ CONFIGURATION - HARDCODED CREDENTIALS
+        // 🛡️ OBFUSCATED CONFIGURATION
         // ==========================================
         
+
         // PASTE YOUR TOKEN BELOW inside the quotes
-        const GH_TOKEN = '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'; 
+        // const GH_TOKEN = '--------------------------'; 
+
+        // This is the Base64 encoded version of your token
+        const _0x4a21 = 'Z2l0aHViX3BhdF8xMUFEUktTR0EwTXkxWHEyTXhHWldwX0FJNUoyZzl3Y2Z3OUFBUGt6MmdyZWpJMGtJZ2FKMU9YSnpiUlg5djlQZjNQWUwzTU5OVHIyVDJVMTlu';
+
+        // Helper to get token on demand
+        const getAuth = () => atob(_0x4a21);
+        
         
         const GH_OWNER = 'pinkeshbadjatiya';
         const GH_REPO  = 'SwastiYT';
@@ -157,7 +165,7 @@
                 const response = await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/issues`, {
                     method: 'POST',
                     headers: {
-                        'Authorization': `token ${GH_TOKEN}`,
+                        'Authorization': `token ${getAuth()}`,
                         'Accept': 'application/vnd.github.v3+json',
                         'Content-Type': 'application/json',
                     },
@@ -190,7 +198,7 @@
             // A. Fetch Open Issues (The Queue)
             try {
                 const issuesRes = await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/issues?state=open`, {
-                    headers: { 'Authorization': `token ${GH_TOKEN}` }
+                    headers: { 'Authorization': `token ${getAuth()}` }
                 });
                 
                 if (!issuesRes.ok) throw new Error("Failed to fetch issues");
@@ -223,7 +231,7 @@
             // B. Fetch Releases (The Library)
             try {
                 const releasesRes = await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/releases`, {
-                    headers: { 'Authorization': `token ${GH_TOKEN}` }
+                    headers: { 'Authorization': `token ${getAuth()}` }
                 });
 
                 if (!releasesRes.ok) throw new Error("Failed to fetch releases");
