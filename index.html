@@ -6,7 +6,8 @@
     <title>SwastiYT Hub | OmniChannel</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        :root {
+        /* Define variables for both modes */
+        [data-bs-theme="dark"] {
             --bs-body-bg: #010409;
             --surface: #0d1117;
             --card-cap: #161b22;
@@ -15,24 +16,62 @@
             --text-secondary: #8b949e;
         }
 
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; color: #c9d1d9; padding-bottom: 5rem; }
-        .card { background-color: var(--surface); border: 1px solid var(--border-color); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
-        .table thead th { background-color: var(--card-cap); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-secondary); border: none; padding: 1rem; }
-        .table td { padding: 1.2rem 1rem; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
-        .thumbnail-mini { width: 100px; border-radius: 8px; aspect-ratio: 16/9; object-fit: cover; transition: all 0.2s ease; cursor: pointer; border: 1px solid var(--border-color); background: #000; }
-        .thumbnail-mini:hover { transform: scale(1.05); border-color: #58a6ff; box-shadow: 0 0 15px rgba(88, 166, 255, 0.2); }
-        .btn-github { background-color: var(--accent); color: #ffffff; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; font-weight: 600; transition: all 0.2s ease; }
-        .btn-github:hover:not(:disabled) { background-color: #2ea44f; transform: translateY(-1px); }
-        .btn-cancel { background-color: #da3633; color: white; border: none; border-radius: 8px; font-size: 0.75rem; padding: 0.4rem 0.8rem; }
-        .btn-retry { background-color: transparent; color: #58a6ff; border: 1px solid #58a6ff; border-radius: 8px; font-size: 0.75rem; padding: 0.4rem 0.8rem; margin-right: 5px; }
-        .btn-retry:hover { background: #58a6ff; color: white; }
-        .btn-cleanup { background-color: transparent; color: #f85149; border: 1px solid #f85149; border-radius: 8px; font-size: 0.75rem; padding: 0.4rem 0.8rem; }
-        .btn-cleanup:hover { background: #f85149; color: white; }
-        .form-control { background-color: var(--bs-body-bg); border: 1px solid var(--border-color); color: white !important; }
-        .status-pill { font-size: 0.65rem; font-weight: 700; padding: 0.4em 0.8em; border-radius: 20px; }
+        [data-bs-theme="light"] {
+            --bs-body-bg: #f6f8fa;
+            --surface: #ffffff;
+            --card-cap: #f6f8fa;
+            --accent: #2da44f;
+            --border-color: #d0d7de;
+            --text-secondary: #57606a;
+        }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; 
+            background-color: var(--bs-body-bg);
+            color: var(--text-secondary);
+            padding-bottom: 5rem; 
+            transition: background-color 0.3s ease;
+        }
+
+        .card { 
+            background-color: var(--surface); 
+            border: 1px solid var(--border-color); 
+            border-radius: 12px; 
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1); 
+        }
+
+        .table thead th { 
+            background-color: var(--card-cap); 
+            color: var(--text-secondary);
+            border: none; 
+        }
+
+        .table td { 
+            border-bottom: 1px solid var(--border-color); 
+            background-color: transparent;
+        }
+
+        /* Dark mode specific text overrides for table rows */
+        [data-bs-theme="dark"] .table td { color: #c9d1d9; }
+        [data-bs-theme="light"] .table td { color: #24292f; }
+
+        .thumbnail-mini { 
+            width: 100px; 
+            border-radius: 8px; 
+            aspect-ratio: 16/9; 
+            object-fit: cover; 
+            border: 1px solid var(--border-color); 
+        }
+
+        .btn-github { background-color: var(--accent); color: #ffffff; border-radius: 8px; font-weight: 600; }
+        .btn-github:hover { background-color: #2c974b; color: white; }
+        
         .pulse-downloading { animation: pulse-blue 2s infinite; }
-        @keyframes pulse-blue { 0% { box-shadow: 0 0 0 0 rgba(88, 166, 255, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(88, 166, 255, 0); } 100% { box-shadow: 0 0 0 0 rgba(88, 166, 255, 0); } }
-        @media (max-width: 768px) { .hide-mobile { display: none; } }
+        @keyframes pulse-blue { 
+            0% { box-shadow: 0 0 0 0 rgba(88, 166, 255, 0.4); } 
+            70% { box-shadow: 0 0 0 10px rgba(88, 166, 255, 0); } 
+            100% { box-shadow: 0 0 0 0 rgba(88, 166, 255, 0); } 
+        }
     </style>
 </head>
 <body>
@@ -43,8 +82,10 @@
             <div class="bg-success rounded-circle me-2 pulse-downloading" style="width:10px; height:10px;"></div>
             <span class="navbar-brand fw-bold m-0">SwastiYT <span class="text-secondary fw-light">Hub</span></span>
         </div>
-        <div class="d-flex gap-2">
-            <button id="theme-toggle" class="btn btn-link text-decoration-none p-0 me-2">🌓</button>
+        <div class="d-flex gap-2 align-items-center">
+            <button id="theme-toggle" class="btn btn-outline-secondary btn-sm rounded-circle" style="width: 35px; height: 35px; padding: 0;">
+                <span id="theme-icon">🌙</span>
+            </button>
             <button id="refresh-btn" class="btn btn-outline-secondary btn-sm rounded-pill px-3">Refresh Sync</button>
         </div>
     </div>
@@ -140,12 +181,25 @@
     };
 
     $(document).ready(function() {
+        // --- PERSISTENT THEME LOGIC ---
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        applyTheme(savedTheme);
+
+        $('#theme-toggle').on('click', function() {
+            const currentTheme = $('html').attr('data-bs-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            applyTheme(newTheme);
+        });
+
+        function applyTheme(theme) {
+            $('html').attr('data-bs-theme', theme);
+            localStorage.setItem('theme', theme);
+            $('#theme-icon').text(theme === 'dark' ? '🌙' : '☀️');
+            logger.info(`Theme switched to: ${theme}`);
+        }
+        
         refreshAll();
         $('#refresh-btn').on('click', refreshAll);
-        $('#theme-toggle').on('click', () => {
-            const theme = $('html').attr('data-bs-theme') === 'dark' ? 'light' : 'dark';
-            $('html').attr('data-bs-theme', theme);
-        });
         $('#start-download-btn').on('click', () => triggerDownload($('#yt-url-input').val().trim()));
         $('#table-search').on('keyup', function() {
             const val = $(this).val().toLowerCase();
