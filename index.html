@@ -299,37 +299,60 @@
     }
 
     async function refreshAll() {
-        const headers = { 'Authorization': `token ${getAuth()}` };
+        const headers = { 
+            'Authorization': `token ${getAuth()}`,
+            'Accept': 'application/vnd.github+json' // Recommended for latest data
+        };
+        
+        // Generate a unique timestamp for every single refresh
+        const ts = Date.now();
+    
+        // UI Feedback
         $('#tracker-body').html('<tr><td colspan="5" class="text-center py-5"><div class="spinner-border text-primary"></div></td></tr>');
-        logger.info("Refreshing local state from GitHub API...");
+        logger.info("Forcing fresh sync from GitHub API...");
+    
         try {
+            // We use a helper to ensure the cache-buster is appended correctly
+            const getUrl = (path) => {
+                const separator = path.includes('?') ? '&' : '?';
+                return `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/${path}${separator}t=${ts}`;
+            };
+    
             const [metaRes, releaseRes, issuesRes, runsRes] = await Promise.all([
-                $.ajax({ url: `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/metadata`, headers }),
-                $.ajax({ url: `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/releases`, headers }),
-                $.ajax({ url: `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/issues?state=open`, headers }),
-                $.ajax({ url: `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/actions/runs?status=in_progress`, headers })
+                $.ajax({ url: getUrl('contents/metadata'), headers, cache: false }),
+                $.ajax({ url: getUrl('releases'), headers, cache: false }),
+                $.ajax({ url: getUrl('issues?state=open'), headers, cache: false }),
+                $.ajax({ url: getUrl('actions/runs?status=in_progress'), headers, cache: false })
             ]);
+    
             const postedIds = releaseRes.map(r => r.tag_name);
             const activeRuns = runsRes.workflow_runs;
             allData = [];
+    
             const fetchPromises = metaRes.filter(f => f.name.endsWith('.json')).map(file => {
-                return $.getJSON(file.download_url).then(data => {
+                // Also append timestamp to the JSON file download URLs
+                return $.getJSON(`${file.download_url}?t=${ts}`).then(data => {
                     data.isPosted = postedIds.includes(data.id);
                     data.status = 'COMPLETED';
                     allData.push(data);
                 });
             });
+    
             issuesRes.forEach(issue => {
                 const body = issue.body || "";
                 const contentToSearch = body + " " + issue.title;
                 const ytIdMatch = contentToSearch.match(/(?:v=|\/be\/|embed\/|shorts\/|Download\s)([^&?\s-]+)/);
                 const ytId = ytIdMatch ? ytIdMatch[1] : 'PENDING';
+                
+                // Match against active runs
                 const matchedRun = activeRuns.find(run => 
                     (run.display_title && run.display_title.includes(issue.number)) || 
                     (run.display_title && run.display_title.includes(ytId))
                 );
+    
                 const isActuallyRunning = !!matchedRun;
                 logger.info(`Task #${issue.number} state:`, isActuallyRunning ? "Active Run" : "Stalled/Failed");
+
                 allData.push({
                     id: ytId,
                     title: issue.title,
@@ -342,11 +365,13 @@
                     isPosted: false
                 });
             });
+    
             await Promise.all(fetchPromises);
             allData.sort((a,b) => new Date(b.published_date) - new Date(a.published_date));
             renderTable();
+            
             $('#social-count').text(`${allData.filter(d=>d.isPosted).length} / ${allData.length}`);
-            logger.success("State sync complete.");
+            logger.success("State sync complete (Cache Bypassed).");
         } catch (err) {
             logger.error("Sync Failure", err);
             $('#tracker-body').html('<tr><td colspan="5" class="text-center text-danger">Fetch Error. Check F12 Logs.</td></tr>');
