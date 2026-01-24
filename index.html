@@ -3,87 +3,123 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SwastiYT - OmniChannel Dashboard</title>
+    <title>SwastiYT OmniChannel</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         :root {
-            --primary: #2da44e;
             --bg: #0d1117;
             --card-bg: #161b22;
             --text: #c9d1d9;
             --border: #30363d;
-            --yt-red: #ff0000;
-            --ig-pink: #e1306c;
         }
 
-        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); padding: 20px; }
-        .container { max-width: 1100px; margin: 0 auto; }
-        
-        .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 20px; }
-        
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th { text-align: left; border-bottom: 2px solid var(--border); padding: 10px; color: #8b949e; font-size: 0.8em; text-transform: uppercase; }
-        td { padding: 12px 10px; border-bottom: 1px solid var(--border); font-size: 0.9em; }
-        
-        .thumbnail-mini { width: 80px; border-radius: 4px; }
-        
-        .status-pill { padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; }
-        .status-ready { background: #1f6feb; color: white; }
-        .status-missing { background: #30363d; color: #8b949e; }
-        .status-posted { background: var(--primary); color: white; }
+        body { 
+            background-color: var(--bg); 
+            color: var(--text);
+            padding-bottom: 50px;
+        }
 
-        .btn-action { background: var(--primary); color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; }
-        .btn-action:disabled { opacity: 0.5; cursor: not-allowed; }
-        
-        .header-flex { display: flex; justify-content: space-between; align-items: center; }
+        .card { 
+            background-color: var(--card-bg); 
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+
+        .thumbnail-mini { 
+            width: 80px; 
+            border-radius: 4px; 
+            aspect-ratio: 16/9;
+            object-fit: cover;
+        }
+
+        .status-pill {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+        }
+
+        .btn-github { background-color: #238636; color: white; border: none; }
+        .btn-github:hover { background-color: #2ea44f; color: white; }
+
+        input.form-control {
+            background-color: var(--bg);
+            border: 1px solid var(--border);
+            color: white;
+        }
+
+        input.form-control:focus {
+            background-color: var(--bg);
+            color: white;
+            border-color: #58a6ff;
+            box-shadow: none;
+        }
+
+        @media (max-width: 768px) {
+            .hide-mobile { display: none; }
+        }
     </style>
 </head>
 <body>
 
+<nav class="navbar navbar-dark bg-dark mb-4 border-bottom border-secondary">
+    <div class="container">
+        <span class="navbar-brand mb-0 h1">SwastiYT Dash</span>
+        <button id="refresh-btn" class="btn btn-outline-light btn-sm">🔄 Refresh</button>
+    </div>
+</nav>
+
 <div class="container">
-    <div class="header-flex">
-        <h1>SwastiYT OmniChannel</h1>
-        <button class="btn-action" style="background:#30363d" onclick="refreshAll()">🔄 Refresh Data</button>
+    <div class="row g-3 mb-4">
+        <div class="col-md-8">
+            <input type="text" id="table-search" class="form-control" placeholder="Search by video title or ID...">
+        </div>
+        <div class="col-md-4 d-flex gap-2">
+            <div class="card flex-fill p-2 text-center small">
+                <div class="text-secondary">Sync</div>
+                <div id="social-count" class="fw-bold">-</div>
+            </div>
+            <div class="card flex-fill p-2 text-center small">
+                <div class="text-secondary">Library</div>
+                <div id="yt-count" class="fw-bold">-</div>
+            </div>
+        </div>
     </div>
 
-    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 20px;">
-        <div class="card"><h3>YouTube</h3><div id="yt-count">0 Videos</div></div>
-        <div class="card"><h3>GitHub Storage</h3><div id="gh-count">0 Files</div></div>
-        <div class="card"><h3>Socials Posted</h3><div id="social-count">0/0</div></div>
-    </div>
-
-    <div class="card">
-        <h3>Content Distribution Tracker</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>Video</th>
-                    <th>ID / Title</th>
-                    <th>Published</th>
-                    <th>YouTube</th>
-                    <th>GitHub</th>
-                    <th>Socials (IG/FB/X)</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody id="tracker-body">
-                <tr><td colspan="7" style="text-align:center; padding: 40px;">Loading distribution data...</td></tr>
-            </tbody>
-        </table>
+    <div class="card shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-dark table-hover mb-0 align-middle">
+                <thead class="table-secondary">
+                    <tr>
+                        <th style="width: 100px;">Video</th>
+                        <th>Title</th>
+                        <th class="hide-mobile">Date</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="tracker-body">
+                    <tr>
+                        <td colspan="5" class="text-center py-5">
+                            <div class="spinner-border spinner-border-sm text-primary"></div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
+
+<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
     // Configuration
     const GH_OWNER = 'pinkeshbadjatiya';
     const GH_REPO  = 'SwastiYT';
-
     
     // ==========================================
     // 🛡️ OBFUSCATED CONFIGURATION
     // ==========================================
     
-    // const GH_TOKEN = atob('-----------------');
-
     // PASTE YOUR TOKEN BELOW inside the quotes
     // const GH_TOKEN = '--------------------------'; 
 
@@ -100,106 +136,102 @@
         return atob([_p1, _p2, _p3].join(''));
     };
 
-    async function refreshAll() {
-        const trackerBody = document.getElementById('tracker-body');
+    $(document).ready(function() {
+        refreshAll();
+
+        // Refresh button click
+        $('#refresh-btn').on('click', refreshAll);
+
+        // Real-time Search Filter
+        $('#table-search').on('keyup', function() {
+            var value = $(this).val().toLowerCase();
+            $("#tracker-body tr").filter(function() {
+                $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
+            });
+        });
+    });
+
+    function refreshAll() {
+        const headers = { 'Authorization': `token ${getAuth()}` };
         
-        try {
-            // 1. Fetch all JSON files from ./metadata folder via GitHub API
-            const metaRes = await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/metadata`, {
-                headers: { 'Authorization': `token ${getAuth()}` }
-            });
-            const metadataFiles = await metaRes.json();
-
-            // 2. Fetch all Releases (Social Posts)
-            const releaseRes = await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/releases`, {
-                headers: { 'Authorization': `token ${getAuth()}` }
-            });
-            const releases = await releaseRes.json();
+        // Use jQuery AJAX for better error handling and cleaner code
+        $.when(
+            $.ajax({ url: `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/metadata`, headers }),
+            $.ajax({ url: `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/releases`, headers })
+        ).done(function(metaData, releaseData) {
+            const metadataFiles = metaData[0];
+            const releases = releaseData[0];
             const postedIds = releases.map(r => r.tag_name);
-
-            trackerBody.innerHTML = "";
+            
+            let html = "";
             let socialCount = 0;
 
-            // 3. Loop through each metadata file to populate row
-            for (const file of metadataFiles) {
-                if (!file.name.endsWith('.json')) continue;
+            // Process files
+            const fetchPromises = metadataFiles.filter(f => f.name.endsWith('.json')).map(file => {
+                return $.getJSON(file.download_url).then(data => {
+                    const isPosted = postedIds.includes(data.id);
+                    if (isPosted) socialCount++;
 
-                // Fetch the actual JSON content
-                const contentRes = await fetch(file.download_url);
-                const data = await contentRes.json();
-
-                const isPosted = postedIds.includes(data.id);
-                if (isPosted) socialCount++;
-
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td><img src="${data.thumbnail}" class="thumbnail-mini"></td>
-                    <td>
-                        <strong>${data.title}</strong><br>
-                        <small style="color:#8b949e">${data.id}</small>
-                    </td>
-                    <td>${new Date(data.published_date).toLocaleDateString()}</td>
-                    <td><span class="status-pill status-posted">Live</span></td>
-                    <td><span class="status-pill status-posted">Stored</span></td>
-                    <td>
-                        <span class="status-pill ${isPosted ? 'status-posted' : 'status-missing'}">
-                            ${isPosted ? 'Posted' : 'Missing'}
-                        </span>
-                    </td>
-                    <td>
-                        <button class="btn-action" 
-                                onclick="triggerSocialPost('${data.id}', '${data.title}')"
-                                ${isPosted ? 'disabled' : ''}>
-                            ${isPosted ? 'Archived' : '🚀 Post Now'}
-                        </button>
-                    </td>
-                `;
-                trackerBody.appendChild(row);
-            }
-
-            // Update Stats
-            document.getElementById('yt-count').innerText = `${metadataFiles.length} Videos`;
-            document.getElementById('gh-count').innerText = `${metadataFiles.length} Stored`;
-            document.getElementById('social-count').innerText = `${socialCount} / ${metadataFiles.length}`;
-
-        } catch (err) {
-            console.error(err);
-            trackerBody.innerHTML = `<tr><td colspan="7" style="color:red; text-align:center;">Failed to sync with GitHub API.</td></tr>`;
-        }
-    }
-
-    // This triggers your "Release" workflow manually
-    async function triggerSocialPost(videoId, title) {
-        if (!confirm(`Trigger Social Media post for: ${title}?`)) return;
-
-        try {
-            const res = await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/releases`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `token ${getAuth()}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    tag_name: videoId,
-                    name: title,
-                    body: `Automated Social Media Post for Video ${videoId}`
-                })
+                    return `
+                        <tr>
+                            <td><img src="${data.thumbnail}" class="thumbnail-mini border border-secondary shadow-sm"></td>
+                            <td>
+                                <div class="fw-bold text-white text-truncate" style="max-width: 250px;">${data.title}</div>
+                                <div class="small text-secondary">${data.id}</div>
+                            </td>
+                            <td class="hide-mobile small text-secondary">${new Date(data.published_date).toLocaleDateString()}</td>
+                            <td>
+                                <span class="badge rounded-pill status-pill ${isPosted ? 'bg-success' : 'bg-warning text-dark'}">
+                                    ${isPosted ? 'Posted' : 'Ready'}
+                                </span>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm ${isPosted ? 'btn-outline-secondary' : 'btn-github'} w-100 action-btn" 
+                                        data-id="${data.id}" data-title="${data.title}"
+                                        ${isPosted ? 'disabled' : ''}>
+                                    ${isPosted ? '✓' : 'Post'}
+                                </button>
+                            </td>
+                        </tr>`;
+                });
             });
 
-            if (res.ok) {
-                alert("Success! The Social Media Automation is now running.");
-                refreshAll();
-            } else {
-                alert("Error triggering post. Check if release already exists.");
-            }
-        } catch (e) {
-            alert("Network Error");
-        }
+            // Wait for all JSON content to be fetched
+            Promise.all(fetchPromises).then(rows => {
+                $('#tracker-body').html(rows.join(''));
+                $('#yt-count').text(rows.length);
+                $('#social-count').text(`${socialCount}/${rows.length}`);
+            });
+
+        }).fail(function() {
+            $('#tracker-body').html('<tr><td colspan="5" class="text-center text-danger">API Error - Check configuration.</td></tr>');
+        });
     }
 
-    // Initial Load
-    refreshAll();
-</script>
+    // Event Delegation for the "Post" buttons
+    $(document).on('click', '.action-btn', function() {
+        const id = $(this).data('id');
+        const title = $(this).data('title');
+        
+        if (!confirm(`Post "${title}" to socials?`)) return;
 
+        $(this).prop('disabled', true).text('...');
+
+        $.ajax({
+            url: `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/releases`,
+            method: 'POST',
+            headers: { 'Authorization': `token ${getAuth()}`, 'Content-Type': 'application/json' },
+            data: JSON.stringify({ tag_name: id, name: title, body: `Automated post from SwastiYT Dash` }),
+            success: function() {
+                alert("Triggered!");
+                refreshAll();
+            },
+            error: function() {
+                alert("Failed to trigger post.");
+                refreshAll();
+            }
+        });
+    });
+</script>
 </body>
 </html>
