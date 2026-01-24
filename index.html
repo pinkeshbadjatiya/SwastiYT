@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SwastiYT Dashboard</title>
+    <title>SwastiYT - OmniChannel Dashboard</title>
     <style>
         :root {
             --primary: #2da44e;
@@ -11,264 +11,195 @@
             --card-bg: #161b22;
             --text: #c9d1d9;
             --border: #30363d;
+            --yt-red: #ff0000;
+            --ig-pink: #e1306c;
         }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-            background-color: var(--bg);
-            color: var(--text);
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-        }
-
-        .container {
-            max-width: 800px;
-            width: 100%;
-        }
-
-        h1, h3 { color: #ffffff; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); padding: 20px; }
+        .container { max-width: 1100px; margin: 0 auto; }
         
-        /* Cards */
-        .card {
-            background: var(--card-bg);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
+        .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th { text-align: left; border-bottom: 2px solid var(--border); padding: 10px; color: #8b949e; font-size: 0.8em; text-transform: uppercase; }
+        td { padding: 12px 10px; border-bottom: 1px solid var(--border); font-size: 0.9em; }
+        
+        .thumbnail-mini { width: 80px; border-radius: 4px; }
+        
+        .status-pill { padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; }
+        .status-ready { background: #1f6feb; color: white; }
+        .status-missing { background: #30363d; color: #8b949e; }
+        .status-posted { background: var(--primary); color: white; }
 
-        /* Inputs & Buttons */
-        input[type="text"] {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 10px;
-            background: #0d1117;
-            border: 1px solid var(--border);
-            color: white;
-            border-radius: 6px;
-            box-sizing: border-box;
-        }
-
-        button {
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 14px;
-        }
-
-        button:hover { opacity: 0.9; }
-        button:disabled { background-color: #555; cursor: not-allowed; }
-
-        .refresh-btn {
-            background: transparent;
-            border: 1px solid var(--border);
-            padding: 5px 10px;
-        }
-
-        /* Lists */
-        ul { list-style: none; padding: 0; }
-        li {
-            padding: 10px;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        li:last-child { border-bottom: none; }
-
-        .status-badge {
-            font-size: 12px;
-            padding: 2px 8px;
-            border-radius: 10px;
-            background: #1f6feb;
-            color: white;
-        }
-        .status-success { background: var(--primary); }
+        .btn-action { background: var(--primary); color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        .btn-action:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .header-flex { display: flex; justify-content: space-between; align-items: center; }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>SwastiYT Manager</h1>
-
-        <div class="card">
-            <h3>📥 New Download</h3>
-            <p style="font-size: 0.9em; color: #8b949e;">Paste a YouTube URL below.</p>
-            <input type="text" id="video-url" placeholder="https://www.youtube.com/watch?v=...">
-            <button id="download-btn" onclick="triggerDownload()">Start Download</button>
-            <div id="msg-area" style="margin-top:10px; font-weight:bold;"></div>
-        </div>
-
-        <div class="card">
-            <div style="display:flex; justify-content:space-between;">
-                <h3>⏳ Queue (Open Issues)</h3>
-                <button class="refresh-btn" onclick="fetchData()">Refresh</button>
-            </div>
-            <ul id="queue-list">
-                <li style="color:#8b949e">Loading...</li>
-            </ul>
-        </div>
-
-        <div class="card">
-            <h3>✅ Completed Library (Releases)</h3>
-            <ul id="library-list">
-                <li style="color:#8b949e">Loading...</li>
-            </ul>
-        </div>
+<div class="container">
+    <div class="header-flex">
+        <h1>SwastiYT OmniChannel</h1>
+        <button class="btn-action" style="background:#30363d" onclick="refreshAll()">🔄 Refresh Data</button>
     </div>
 
-    <script>
-        // ==========================================
-        // 🛡️ OBFUSCATED CONFIGURATION
-        // ==========================================
-        
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 20px;">
+        <div class="card"><h3>YouTube</h3><div id="yt-count">0 Videos</div></div>
+        <div class="card"><h3>GitHub Storage</h3><div id="gh-count">0 Files</div></div>
+        <div class="card"><h3>Socials Posted</h3><div id="social-count">0/0</div></div>
+    </div>
 
-        // PASTE YOUR TOKEN BELOW inside the quotes
-        // const GH_TOKEN = '--------------------------'; 
+    <div class="card">
+        <h3>Content Distribution Tracker</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Video</th>
+                    <th>ID / Title</th>
+                    <th>Published</th>
+                    <th>YouTube</th>
+                    <th>GitHub</th>
+                    <th>Socials (IG/FB/X)</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="tracker-body">
+                <tr><td colspan="7" style="text-align:center; padding: 40px;">Loading distribution data...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
 
-        // This is the Base64 encoded version of your token
-        // We break the token into three non-obvious parts
-        // and store them in different variables.
-        const _p1 = 'Z2l0aHViX3BhdF8xMUFEUktTR0Ewenc4bEZQM3';
-        const _p2 = 'RvTWhZX2UzeUcxdmJvRFdiQUh2Vmg3VmhNeHdl';
-        const _p3 = 'QWEyZTRtUXJMa2J4U2VhWlk0MEFTSDU0VUJSTEMxOG5tSklJ';
+<script>
+    // Configuration
+    const GH_OWNER = 'pinkeshbadjatiya';
+    const GH_REPO  = 'SwastiYT';
+
     
-        // The function that reconstructs it only in the browser's memory
-        // Helper to get token on demand
-        const getAuth = () => {
-            return atob([_p1, _p2, _p3].join(''));
-        };
-            
-        const GH_OWNER = 'pinkeshbadjatiya';
-        const GH_REPO  = 'SwastiYT';
+    // ==========================================
+    // 🛡️ OBFUSCATED CONFIGURATION
+    // ==========================================
+    
+    // const GH_TOKEN = atob('-----------------');
 
-        // ==========================================
+    // PASTE YOUR TOKEN BELOW inside the quotes
+    // const GH_TOKEN = '--------------------------'; 
 
-        // 1. TRIGGER DOWNLOAD (Creates GitHub Issue)
-        async function triggerDownload() {
-            const url = document.getElementById('video-url').value;
-            const btn = document.getElementById('download-btn');
-            const msg = document.getElementById('msg-area');
+    // This is the Base64 encoded version of your token
+    // We break the token into three non-obvious parts
+    // and store them in different variables.
+    const _p1 = 'Z2l0aHViX3BhdF8xMUFEUktTR0Ewenc4bEZQM3';
+    const _p2 = 'RvTWhZX2UzeUcxdmJvRFdiQUh2Vmg3VmhNeHdl';
+    const _p3 = 'QWEyZTRtUXJMa2J4U2VhWlk0MEFTSDU0VUJSTEMxOG5tSklJ';
 
-            if (!url) {
-                alert("Please enter a URL.");
-                return;
+    // The function that reconstructs it only in the browser's memory
+    // Helper to get token on demand
+    const getAuth = () => {
+        return atob([_p1, _p2, _p3].join(''));
+    };
+
+    async function refreshAll() {
+        const trackerBody = document.getElementById('tracker-body');
+        
+        try {
+            // 1. Fetch all JSON files from ./metadata folder via GitHub API
+            const metaRes = await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/metadata`, {
+                headers: { 'Authorization': `token ${getAuth()}` }
+            });
+            const metadataFiles = await metaRes.json();
+
+            // 2. Fetch all Releases (Social Posts)
+            const releaseRes = await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/releases`, {
+                headers: { 'Authorization': `token ${getAuth()}` }
+            });
+            const releases = await releaseRes.json();
+            const postedIds = releases.map(r => r.tag_name);
+
+            trackerBody.innerHTML = "";
+            let socialCount = 0;
+
+            // 3. Loop through each metadata file to populate row
+            for (const file of metadataFiles) {
+                if (!file.name.endsWith('.json')) continue;
+
+                // Fetch the actual JSON content
+                const contentRes = await fetch(file.download_url);
+                const data = await contentRes.json();
+
+                const isPosted = postedIds.includes(data.id);
+                if (isPosted) socialCount++;
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><img src="${data.thumbnail}" class="thumbnail-mini"></td>
+                    <td>
+                        <strong>${data.title}</strong><br>
+                        <small style="color:#8b949e">${data.id}</small>
+                    </td>
+                    <td>${new Date(data.published_date).toLocaleDateString()}</td>
+                    <td><span class="status-pill status-posted">Live</span></td>
+                    <td><span class="status-pill status-posted">Stored</span></td>
+                    <td>
+                        <span class="status-pill ${isPosted ? 'status-posted' : 'status-missing'}">
+                            ${isPosted ? 'Posted' : 'Missing'}
+                        </span>
+                    </td>
+                    <td>
+                        <button class="btn-action" 
+                                onclick="triggerSocialPost('${data.id}', '${data.title}')"
+                                ${isPosted ? 'disabled' : ''}>
+                            ${isPosted ? 'Archived' : '🚀 Post Now'}
+                        </button>
+                    </td>
+                `;
+                trackerBody.appendChild(row);
             }
 
-            btn.disabled = true;
-            btn.innerText = "Triggering...";
-            msg.innerText = "";
+            // Update Stats
+            document.getElementById('yt-count').innerText = `${metadataFiles.length} Videos`;
+            document.getElementById('gh-count').innerText = `${metadataFiles.length} Stored`;
+            document.getElementById('social-count').innerText = `${socialCount} / ${metadataFiles.length}`;
 
-            try {
-                const issueTitle = `Download ${url}`;
-                
-                const response = await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/issues`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `token ${getAuth()}`,
-                        'Accept': 'application/vnd.github.v3+json',
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        title: issueTitle,
-                        body: url
-                    })
-                });
-
-                if (response.ok) {
-                    msg.style.color = "var(--primary)";
-                    msg.innerText = "Success! Action triggered.";
-                    document.getElementById('video-url').value = "";
-                    setTimeout(fetchData, 1000); // Wait 1s then refresh lists
-                } else {
-                    throw new Error("GitHub API Error: " + response.statusText);
-                }
-            } catch (error) {
-                msg.style.color = "#ff7b72";
-                msg.innerText = "Error: " + error.message;
-                console.error(error);
-            } finally {
-                btn.disabled = false;
-                btn.innerText = "Start Download";
-            }
+        } catch (err) {
+            console.error(err);
+            trackerBody.innerHTML = `<tr><td colspan="7" style="color:red; text-align:center;">Failed to sync with GitHub API.</td></tr>`;
         }
+    }
 
-        // 2. FETCH DATA (Issues & Releases)
-        async function fetchData() {
-            // A. Fetch Open Issues (The Queue)
-            try {
-                const issuesRes = await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/issues?state=open`, {
-                    headers: { 'Authorization': `token ${getAuth()}` }
-                });
-                
-                if (!issuesRes.ok) throw new Error("Failed to fetch issues");
-                
-                const issues = await issuesRes.json();
-                const queueList = document.getElementById('queue-list');
-                queueList.innerHTML = "";
-                
-                // Filter issues
-                const activeDownloads = issues.filter(i => i.title.startsWith("Download") || i.title.includes("Failed"));
+    // This triggers your "Release" workflow manually
+    async function triggerSocialPost(videoId, title) {
+        if (!confirm(`Trigger Social Media post for: ${title}?`)) return;
 
-                if(activeDownloads.length === 0) {
-                    queueList.innerHTML = "<li style='color:#8b949e'>No active downloads.</li>";
-                } else {
-                    activeDownloads.forEach(issue => {
-                        const li = document.createElement('li');
-                        li.innerHTML = `
-                            <span>${issue.title}</span>
-                            <span class="status-badge">Processing</span>
-                            <a href="${issue.html_url}" target="_blank" style="color:#58a6ff; text-decoration:none; margin-left:10px;">Logs</a>
-                        `;
-                        queueList.appendChild(li);
-                    });
-                }
-            } catch (e) { 
-                console.error(e);
-                document.getElementById('queue-list').innerHTML = "<li style='color:#ff7b72'>Error loading queue. Check Token.</li>";
+        try {
+            const res = await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/releases`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `token ${getAuth()}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    tag_name: videoId,
+                    name: title,
+                    body: `Automated Social Media Post for Video ${videoId}`
+                })
+            });
+
+            if (res.ok) {
+                alert("Success! The Social Media Automation is now running.");
+                refreshAll();
+            } else {
+                alert("Error triggering post. Check if release already exists.");
             }
-
-            // B. Fetch Releases (The Library)
-            try {
-                const releasesRes = await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/releases`, {
-                    headers: { 'Authorization': `token ${getAuth()}` }
-                });
-
-                if (!releasesRes.ok) throw new Error("Failed to fetch releases");
-
-                const releases = await releasesRes.json();
-                const libList = document.getElementById('library-list');
-                libList.innerHTML = "";
-
-                if(releases.length === 0) {
-                    libList.innerHTML = "<li style='color:#8b949e'>No videos found.</li>";
-                } else {
-                    releases.forEach(release => {
-                        const asset = release.assets.find(a => a.name.endsWith('.mp4'));
-                        const downloadUrl = asset ? asset.browser_download_url : '#';
-                        
-                        const li = document.createElement('li');
-                        li.innerHTML = `
-                            <span>${release.name || release.tag_name}</span>
-                            <div>
-                                <span class="status-badge status-success">Done</span>
-                                ${asset ? `<a href="${downloadUrl}" class="status-badge" style="background:#238636; text-decoration:none; margin-left:5px;">Download MP4</a>` : ''}
-                            </div>
-                        `;
-                        libList.appendChild(li);
-                    });
-                }
-            } catch (e) { console.error(e); }
+        } catch (e) {
+            alert("Network Error");
         }
+    }
 
-        // Initialize on load
-        fetchData();
-    </script>
+    // Initial Load
+    refreshAll();
+</script>
+
 </body>
 </html>
