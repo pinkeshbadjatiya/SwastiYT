@@ -15,102 +15,19 @@
             --text-secondary: #8b949e;
         }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-            color: #c9d1d9;
-            padding-bottom: 5rem;
-        }
-
-        /* Modern Card & Table UI */
-        .card {
-            background-color: var(--surface);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-        }
-
-        .table thead th {
-            background-color: var(--card-cap);
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: var(--text-secondary);
-            border: none;
-            padding: 1rem;
-        }
-
-        .table td {
-            padding: 1.2rem 1rem;
-            border-bottom: 1px solid var(--border-color);
-            vertical-align: middle;
-        }
-
-        /* Thumbnail Effects */
-        .thumbnail-mini { 
-            width: 100px; 
-            border-radius: 8px; 
-            aspect-ratio: 16/9;
-            object-fit: cover;
-            transition: all 0.2s ease;
-            cursor: pointer;
-            border: 1px solid var(--border-color);
-            background: #000;
-        }
-
-        .thumbnail-mini:hover {
-            transform: scale(1.05);
-            border-color: #58a6ff;
-            box-shadow: 0 0 15px rgba(88, 166, 255, 0.2);
-        }
-
-        /* Modern Buttons */
-        .btn-github {
-            background-color: var(--accent);
-            color: #ffffff;
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 8px;
-            font-weight: 600;
-            transition: all 0.2s ease;
-        }
-
-        .btn-github:hover:not(:disabled) {
-            background-color: #2ea44f;
-            transform: translateY(-1px);
-        }
-
-        .btn-cancel {
-            background-color: #da3633;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 0.75rem;
-            padding: 0.4rem 0.8rem;
-        }
-        
-        .btn-cancel:hover { background-color: #f85149; }
-
-        .form-control {
-            background-color: var(--bs-body-bg);
-            border: 1px solid var(--border-color);
-            color: white !important;
-        }
-
-        .form-control:focus {
-            border-color: #58a6ff;
-            box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.15);
-        }
-
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; color: #c9d1d9; padding-bottom: 5rem; }
+        .card { background-color: var(--surface); border: 1px solid var(--border-color); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+        .table thead th { background-color: var(--card-cap); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-secondary); border: none; padding: 1rem; }
+        .table td { padding: 1.2rem 1rem; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
+        .thumbnail-mini { width: 100px; border-radius: 8px; aspect-ratio: 16/9; object-fit: cover; transition: all 0.2s ease; cursor: pointer; border: 1px solid var(--border-color); background: #000; }
+        .thumbnail-mini:hover { transform: scale(1.05); border-color: #58a6ff; box-shadow: 0 0 15px rgba(88, 166, 255, 0.2); }
+        .btn-github { background-color: var(--accent); color: #ffffff; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; font-weight: 600; transition: all 0.2s ease; }
+        .btn-github:hover:not(:disabled) { background-color: #2ea44f; transform: translateY(-1px); }
+        .btn-cancel { background-color: #da3633; color: white; border: none; border-radius: 8px; font-size: 0.75rem; padding: 0.4rem 0.8rem; }
+        .form-control { background-color: var(--bs-body-bg); border: 1px solid var(--border-color); color: white !important; }
         .status-pill { font-size: 0.65rem; font-weight: 700; padding: 0.4em 0.8em; border-radius: 20px; }
-        
-        .pulse-downloading {
-            animation: pulse-blue 2s infinite;
-        }
-        @keyframes pulse-blue {
-            0% { box-shadow: 0 0 0 0 rgba(88, 166, 255, 0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(88, 166, 255, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(88, 166, 255, 0); }
-        }
-
+        .pulse-downloading { animation: pulse-blue 2s infinite; }
+        @keyframes pulse-blue { 0% { box-shadow: 0 0 0 0 rgba(88, 166, 255, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(88, 166, 255, 0); } 100% { box-shadow: 0 0 0 0 rgba(88, 166, 255, 0); } }
         @media (max-width: 768px) { .hide-mobile { display: none; } }
     </style>
 </head>
@@ -133,7 +50,7 @@
     <div class="card p-4 mb-4 border-0 shadow-lg">
         <label class="form-label small text-secondary text-uppercase fw-bold" style="font-size: 0.65rem;">Trigger New Acquisition</label>
         <div class="input-group">
-            <input type="text" id="yt-url-input" class="form-control" placeholder="Paste YouTube URL here (Video, Shorts, or ID)...">
+            <input type="text" id="yt-url-input" class="form-control" placeholder="Paste YouTube URL here...">
             <button id="start-download-btn" class="btn btn-github px-4">Start Download</button>
         </div>
         <div id="trigger-msg" class="small mt-2 fw-bold" style="display:none;"></div>
@@ -201,11 +118,9 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
-    // --- Configuration & Security ---
     const GH_OWNER = 'pinkeshbadjatiya';
     const GH_REPO  = 'SwastiYT';
 
-    // Split-token bypass for GitHub Secret Scanning
     const _p1 = 'Z2l0aHViX3BhdF8xMUFEUktTR0Ewenc4bEZQM3';
     const _p2 = 'RvTWhZX2UzeUcxdmJvRFdiQUh2Vmg3VmhNeHdl';
     const _p3 = 'QWEyZTRtUXJMa2J4U2VhWlk0MEFTSDU0VUJSTEMxOG5tSklJ';
@@ -214,18 +129,21 @@
 
     let allData = [];
 
+    // --- DEBUG LOGGING HELPER ---
+    const logger = {
+        info: (msg, data = "") => console.log(`%c[INFO] ${msg}`, "color: #58a6ff; font-weight: bold", data),
+        success: (msg) => console.log(`%c[SUCCESS] ${msg}`, "color: #2ea44f; font-weight: bold"),
+        error: (msg, err) => console.error(`%c[ERROR] ${msg}`, "color: #f85149; font-weight: bold", err)
+    };
+
     $(document).ready(function() {
         refreshAll();
-
         $('#refresh-btn').on('click', refreshAll);
-        
         $('#theme-toggle').on('click', () => {
             const theme = $('html').attr('data-bs-theme') === 'dark' ? 'light' : 'dark';
             $('html').attr('data-bs-theme', theme);
         });
-
         $('#start-download-btn').on('click', triggerDownload);
-
         $('#table-search').on('keyup', function() {
             const val = $(this).val().toLowerCase();
             $("#tracker-body tr").filter(function() {
@@ -238,11 +156,10 @@
         const url = $('#yt-url-input').val().trim();
         const btn = $('#start-download-btn');
         const msg = $('#trigger-msg');
-
         if (!url) return alert("Please enter a YouTube URL.");
         
         btn.prop('disabled', true).text('Requesting...');
-        msg.hide();
+        logger.info("Triggering new download for:", url);
 
         try {
             await $.ajax({
@@ -251,10 +168,12 @@
                 headers: { 'Authorization': `token ${getAuth()}`, 'Content-Type': 'application/json' },
                 data: JSON.stringify({ title: `Download ${url}`, body: url, labels: ['automation'] })
             });
+            logger.success("Issue created successfully");
             $('#yt-url-input').val('');
-            msg.removeClass('text-danger').addClass('text-success').text('✅ Request submitted! Action will start shortly.').show();
-            setTimeout(refreshAll, 2000);
+            msg.removeClass('text-danger').addClass('text-success').text('✅ Request submitted! Refreshing...').show();
+            setTimeout(refreshAll, 1500);
         } catch (e) {
+            logger.error("Failed to create issue", e);
             msg.removeClass('text-success').addClass('text-danger').text('❌ Error triggering download.').show();
         } finally {
             btn.prop('disabled', false).text('Start Download');
@@ -264,6 +183,7 @@
     async function refreshAll() {
         const headers = { 'Authorization': `token ${getAuth()}` };
         $('#tracker-body').html('<tr><td colspan="5" class="text-center py-5"><div class="spinner-border text-primary"></div></td></tr>');
+        logger.info("Starting global refresh...");
 
         try {
             const [metaRes, releaseRes, issuesRes, runsRes] = await Promise.all([
@@ -273,30 +193,41 @@
                 $.ajax({ url: `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/actions/runs?status=in_progress`, headers })
             ]);
 
+            logger.info("Metadata files found:", metaRes.length);
+            logger.info("Open issues found:", issuesRes.length);
+
             const postedIds = releaseRes.map(r => r.tag_name);
             const activeRuns = runsRes.workflow_runs;
             allData = [];
 
-            // 1. Process Completed
+            // 1. Process Completed Files
             const fetchPromises = metaRes.filter(f => f.name.endsWith('.json')).map(file => {
                 return $.getJSON(file.download_url).then(data => {
                     data.isPosted = postedIds.includes(data.id);
                     data.status = 'COMPLETED';
                     allData.push(data);
-                });
+                }).catch(e => logger.error(`Failed to parse ${file.name}`, e));
             });
 
-            // 2. Process Downloading
+            // 2. Process Downloading (Issues) - FIXED NULL ERROR HERE
             issuesRes.forEach(issue => {
-                const ytIdMatch = issue.body.match(/(?:v=|\/be\/|embed\/|shorts\/)([^&?\/]+)/);
+                logger.info(`Processing issue #${issue.number}: ${issue.title}`);
+                
+                // Safe extraction from body or title
+                const contentToSearch = (issue.body || "") + " " + issue.title;
+                const ytIdMatch = contentToSearch.match(/(?:v=|\/be\/|embed\/|shorts\/|Download\s)([^&?\s-]+)/);
                 const ytId = ytIdMatch ? ytIdMatch[1] : 'PENDING';
-                const matchedRun = activeRuns.find(run => run.display_title.includes(issue.number) || run.display_title.includes(ytId));
+                
+                const matchedRun = activeRuns.find(run => 
+                    (run.display_title && run.display_title.includes(issue.number)) || 
+                    (run.display_title && run.display_title.includes(ytId))
+                );
 
                 allData.push({
                     id: ytId,
                     title: issue.title,
                     published_date: issue.created_at,
-                    thumbnail: ytId !== 'PENDING' ? `https://i.ytimg.com/vi/${ytId}/mqdefault.jpg` : '',
+                    thumbnail: (ytId !== 'PENDING' && ytId.length > 5) ? `https://i.ytimg.com/vi/${ytId}/mqdefault.jpg` : '',
                     status: 'DOWNLOADING',
                     runId: matchedRun ? matchedRun.id : null,
                     isPosted: false
@@ -307,9 +238,11 @@
             allData.sort((a,b) => new Date(b.published_date) - new Date(a.published_date));
             renderTable();
             $('#social-count').text(`${allData.filter(d=>d.isPosted).length} / ${allData.length}`);
+            logger.success("Table refresh complete.");
 
         } catch (err) {
-            $('#tracker-body').html('<tr><td colspan="5" class="text-center text-danger">Auth Failure: Check token scopes.</td></tr>');
+            logger.error("Global refresh failed", err);
+            $('#tracker-body').html('<tr><td colspan="5" class="text-center text-danger">Fetch Error. Check console (F12) for details.</td></tr>');
         }
     }
 
@@ -330,7 +263,7 @@
 
             return `
                 <tr>
-                    <td><img src="${data.thumbnail}" class="thumbnail-mini preview-trigger" data-id="${data.id}"></td>
+                    <td><img src="${data.thumbnail || 'https://via.placeholder.com/100x56?text=Pending'}" class="thumbnail-mini preview-trigger" data-id="${data.id}"></td>
                     <td>
                         <div class="fw-bold text-white text-truncate" style="max-width: 280px;">${data.title}</div>
                         <div class="small text-secondary" style="font-size:0.7rem;">${data.id}</div>
@@ -340,7 +273,7 @@
                     <td class="text-end">${actionHtml}</td>
                 </tr>`;
         });
-        $('#tracker-body').html(rows.join(''));
+        $('#tracker-body').html(rows.length ? rows.join('') : '<tr><td colspan="5" class="text-center py-4">No content found.</td></tr>');
     }
 
     $(document).on('click', '.preview-trigger', function() {
@@ -349,7 +282,7 @@
         
         $('#modalTitle').text(video.title);
         $('#modalImg').attr('src', video.thumbnail);
-        $('#modalDesc').text(video.description);
+        $('#modalDesc').text(video.description || "Metadata exists but description is empty.");
         $('#modalMeta').html(`ID: ${video.id} | Date: ${new Date(video.published_date).toLocaleDateString()}`);
         
         const btn = $('#modalActionBtn');
@@ -366,26 +299,39 @@
 
     function triggerDeploy(id, title) {
         if (!confirm(`Trigger deployment for "${title}"?`)) return;
+        logger.info("Deploying video ID:", id);
         $.ajax({
             url: `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/releases`,
             method: 'POST',
             headers: { 'Authorization': `token ${getAuth()}`, 'Content-Type': 'application/json' },
-            data: JSON.stringify({ tag_name: id, name: title, body: `Automated Post` }),
-            success: () => { bootstrap.Modal.getInstance('#previewModal')?.hide(); refreshAll(); },
-            error: () => alert("Deployment failed.")
+            data: JSON.stringify({ tag_name: id, name: title, body: `Automated Social Post for ${id}` }),
+            success: () => { 
+                logger.success("Release created successfully");
+                bootstrap.Modal.getInstance('#previewModal')?.hide(); 
+                refreshAll(); 
+            },
+            error: (e) => {
+                logger.error("Release creation failed", e);
+                alert("Deployment failed.");
+            }
         });
     }
 
     async function cancelRun(runId) {
         if (!confirm("Stop this download task?")) return;
+        logger.info("Cancelling Action Run ID:", runId);
         try {
             await $.ajax({
                 url: `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/actions/runs/${runId}/cancel`,
                 method: 'POST',
                 headers: { 'Authorization': `token ${getAuth()}` }
             });
+            logger.success("Cancel request sent");
             refreshAll();
-        } catch (e) { alert("Cancel failed."); }
+        } catch (e) { 
+            logger.error("Cancel failed", e);
+            alert("Cancel failed."); 
+        }
     }
 </script>
 </body>
