@@ -133,9 +133,9 @@
 
 <div class="container mt-4">
     <div class="card p-4 mb-4 border-0 shadow-lg">
-        <label class="form-label small text-secondary text-uppercase fw-bold" style="font-size: 0.65rem;">Trigger New Acquisition</label>
+        <label class="form-label small text-secondary text-uppercase fw-bold" style="font-size: 0.65rem;">Trigger New Acquisition (YouTube URL or ID)</label>
         <div class="input-group">
-            <input type="text" id="yt-url-input" class="form-control" placeholder="Paste YouTube URL here...">
+            <input type="text" id="yt-url-input" class="form-control" placeholder="Paste URL or 11-char video ID here...">
             <button id="start-download-btn" class="btn btn-github px-4">Start Download</button>
         </div>
         <div id="trigger-msg" class="small mt-2 fw-bold" style="display:none;"></div>
@@ -248,20 +248,45 @@
         });
     });
 
-    async function triggerDownload(url) {
-        if (!url) return alert("Please enter a YouTube URL.");
+    /**
+     * Parses YouTube Video ID from URLs or returns ID directly if valid
+     */
+    function parseYouTubeId(input) {
+        // Regex for various URL formats
+        const urlRegex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?|shorts)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+        const match = input.match(urlRegex);
+        if (match) return match[1];
+
+        // If it's not a URL, check if it's a direct 11-char ID (Alphanumeric, underscores, hyphens)
+        const idRegex = /^[a-zA-Z0-9_-]{11}$/;
+        return idRegex.test(input) ? input : null;
+    }
+
+    async function triggerDownload(input) {
+        if (!input) return alert("Please enter a YouTube URL or ID.");
+        
+        const videoId = parseYouTubeId(input);
+        
+        // Final Title construction based on whether we have a valid ID
+        const issueTitle = videoId ? `Download ${videoId}` : `Download ${input}`;
+        
         const btn = $('#start-download-btn');
         const msg = $('#trigger-msg');
         btn.prop('disabled', true).text('Requesting...');
-        logger.info("Triggering acquisition for:", url);
+        logger.info("Triggering acquisition. Input:", input, "Parsed ID:", videoId);
+
         try {
             await $.ajax({
                 url: `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/issues`,
                 method: 'POST',
                 headers: { 'Authorization': `token ${getAuth()}`, 'Content-Type': 'application/json' },
-                data: JSON.stringify({ title: `Download ${url}`, body: url, labels: ['automation'] })
+                data: JSON.stringify({ 
+                    title: issueTitle, 
+                    body: input, // Send original input as body
+                    labels: ['automation'] 
+                })
             });
-            logger.success("New acquisition issue created.");
+            logger.success("New acquisition issue created: " + issueTitle);
             $('#yt-url-input').val('');
             msg.removeClass('text-danger').addClass('text-success').text('✅ Task added to queue.').show();
             setTimeout(refreshAll, 1500);
