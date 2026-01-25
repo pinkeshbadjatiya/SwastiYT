@@ -5,25 +5,64 @@ import re
 import json
 
 def parse_issue_body(file_path):
+    """
+    Parses the issue body file.
+    1. First attempts to let yt-dlp extract info directly (works for raw URLs and IDs).
+    2. Falls back to Regex if the body uses the structured #### format.
+    """
     if not os.path.exists(file_path):
         return None
 
     with open(file_path, 'r', encoding='utf-8') as f:
-        content = f.read()
+        # strip() is crucial to remove accidental newlines from the issue body
+        content = f.read().strip()
 
+    print(f"Parsing content: {content}")
+
+    # --- STRATEGY 1: Direct yt-dlp Extraction (Smartest Method) ---
+    try:
+        ydl_opts = {
+            'quiet': True, 
+            'no_warnings': True,
+            # We use extract_flat to get metadata fast without downloading yet
+            'extract_flat': True 
+        }
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            # This works if 'content' is a URL OR a Video ID
+            info = ydl.extract_info(content, download=False)
+            
+            # If input was just an ID, yt-dlp might not give a full URL, so we construct it
+            video_url = info.get("webpage_url")
+            if not video_url:
+                video_url = f"https://www.youtube.com/watch?v={info.get('id')}"
+
+            print("✅ Successfully parsed via yt-dlp.")
+            return {
+                "id": info.get("id"),
+                "url": video_url,
+                "title": info.get("title"),
+                "description": info.get("description")
+            }
+    except Exception as e:
+        print(f"⚠️ yt-dlp extraction failed (valid if input is structured text), trying regex fallback: {e}")
+
+    # --- STRATEGY 2: Regex Fallback (For structured inputs) ---
     # Regex to find blocks like #### key #### \n value
     pattern = r"####\s+(.+?)\s+####\s+(.*?)(?=(?:####)|$)"
     matches = re.findall(pattern, content, re.DOTALL)
     
-    data = {}
-    for key, value in matches:
-        clean_key = key.strip().lower()
-        clean_value = value.strip()
-        data[clean_key] = clean_value
+    if matches:
+        data = {}
+        for key, value in matches:
+            clean_key = key.strip().lower()
+            clean_value = value.strip()
+            data[clean_key] = clean_value
+        print("✅ Successfully parsed via Regex.")
+        return data
     
-    return data
+    return None
 
-def save_metadata(data, folder):
+def save_metadata(data, metadata_folder):
     video_id = data.get("id")
     title = data.get("title", "No Title Found")
     description = data.get("description", "")
@@ -32,8 +71,8 @@ def save_metadata(data, folder):
         print("Error: Video ID missing in issue data.")
         return
 
-    # 1. Save JSON Metadata for record-keeping
-    json_path = os.path.join(folder, f"{video_id}.json")
+    # 1. Save JSON Metadata for record-keeping (in metadata/ folder)
+    json_path = os.path.join(metadata_folder, f"{video_id}.json")
     try:
         with open(json_path, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=4)
@@ -42,6 +81,7 @@ def save_metadata(data, folder):
         print(f"Error saving metadata: {e}")
 
     # 2. Save individual text files for GitHub Workflow/Zapier access
+    # These are saved in the ROOT directory so the workflow can find them easily
     files_to_create = {
         "video_id.txt": video_id,
         "video_title.txt": title,
@@ -52,7 +92,7 @@ def save_metadata(data, folder):
     for filename, content in files_to_create.items():
         try:
             with open(filename, "w", encoding="utf-8") as f:
-                f.write(content)
+                f.write(str(content))
             print(f"Created {filename}")
         except Exception as e:
             print(f"Error saving {filename}: {e}")
