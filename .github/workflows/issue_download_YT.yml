@@ -27,9 +27,12 @@ jobs:
 
       - name: Parse and Download
         env:
+          # Use a Heredoc to safely capture the body regardless of special characters
           ISSUE_BODY: ${{ github.event.issue.body }}
         run: |
-          echo "$ISSUE_BODY" > issue_data.txt
+          cat << 'EOF' > issue_data.txt
+          ${{ github.event.issue.body }}
+          EOF
           echo "Running download script..."
           ./venv/bin/python download_video.py issue_data.txt
 
@@ -37,6 +40,8 @@ jobs:
         run: |
           git config user.name "Self-Hosted Runner"
           git config user.email "runner@local"
+          # Ensure directories exist so git add doesn't fail
+          mkdir -p videos metadata
           git add videos/ metadata/
           if git diff-index --quiet HEAD; then
             echo "No changes to commit"
@@ -56,7 +61,7 @@ jobs:
           VIDEO_ID=$(cat video_id.txt | xargs)
           echo "VIDEO_ID=$VIDEO_ID" >> $GITHUB_ENV
           
-          # 2. Read Video Title (Ensure your Python script creates video_title.txt)
+          # 2. Read Video Title
           VIDEO_TITLE=$(cat video_title.txt | xargs)
           echo "VIDEO_TITLE=$VIDEO_TITLE" >> $GITHUB_ENV
 
@@ -66,10 +71,9 @@ jobs:
         with:
           ## VIDEO ID: Accessible in Zapier as "Tag Name"
           tag_name: ${{ env.VIDEO_ID }}
-          
+
           ## VIDEO TITLE: Accessible in Zapier as "Name" (Added for you)
           name: ${{ env.VIDEO_TITLE }}
-          
           files: videos/${{ env.VIDEO_ID }}.mp4
 
           ## VIDEO DESCRIPTION: Accessible in Zapier as "Body"
