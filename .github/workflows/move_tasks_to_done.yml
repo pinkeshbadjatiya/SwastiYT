@@ -1,0 +1,43 @@
+name: Move Tasks to Done
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 */12 * * *'  # Runs every 12 hours
+
+jobs:
+  move_tasks:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Check and Move Completed Tasks
+        run: |
+          # Read pending.json
+          pending_json=$(cat tasks/pending.json)
+          done_json=$(cat tasks/done.json)
+          
+          # Iterate over each video in pending.json
+          for video_id in $(echo "$pending_json" | jq -r 'keys[]'); do
+            # Check if all tasks are completed
+            all_completed=true
+            for task_status in $(echo "$pending_json" | jq -r ".$video_id | to_entries[] | .value"); do
+              if [ "$task_status" != "completed" ]; then
+                all_completed=false
+                break
+              fi
+            done
+            
+            if [ "$all_completed" = true ]; then
+              # Move to done.json
+              video_data=$(echo "$pending_json" | jq ".$video_id")
+              echo "$done_json" | jq --argjson video_data "$video_data" --arg video_id "$video_id" '. + {($video_id): $video_data}' > tasks/done.json
+              
+              # Remove from pending.json
+              echo "$pending_json" | jq "del(.$video_id)" > tasks/pending.json
+              
+              echo "Moved $video_id to done.json"
+            fi
+          done

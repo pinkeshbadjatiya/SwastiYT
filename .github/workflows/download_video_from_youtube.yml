@@ -34,7 +34,7 @@ jobs:
           EOF
           
           echo "Running download script..."
-          ./venv/bin/python download_video.py issue_data.txt
+          ./venv/bin/python src/download_video.py issue_data.txt
 
       - name: Commit and Push Video & Metadata
         run: |

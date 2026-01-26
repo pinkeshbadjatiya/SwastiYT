@@ -1,0 +1,35 @@
+name: Transcribe Audio Workflow
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 * * * *'  # Runs every hour
+
+jobs:
+  transcribe_audio_job:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Check for Pending Transcribe Audio Task
+        run: |
+          # Read pending.json
+          pending_json=$(cat tasks/pending.json)
+          
+          # Iterate over each video in pending.json
+          for video_id in $(echo "$pending_json" | jq -r 'keys[]'); do
+            download_video_status=$(echo "$pending_json" | jq -r ".$video_id.download_video")
+            transcribe_audio_status=$(echo "$pending_json" | jq -r ".$video_id.transcribe_audio")
+            
+            if [ "$download_video_status" = "completed" ] && [ "$transcribe_audio_status" = "pending" ]; then
+              # Perform Transcribe Audio logic here
+              echo "Performing Transcribe Audio for $video_id"
+              
+              # Update transcribe_audio status to completed
+              echo "$pending_json" | jq ".$video_id.transcribe_audio = \"completed\"" > tasks/pending.json
+              
+              echo "Updated transcribe_audio status for $video_id to completed"
+            fi
+          done
