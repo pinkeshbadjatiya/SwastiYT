@@ -1,0 +1,119 @@
+name: Release Video Task
+
+on:
+  workflow_dispatch:
+  # This workflow will be triggered by the download_video_task workflow
+  # when the download_video task is completed.
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  release_on_runner:
+    # runs-on: self-hosted
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Find and Prepare Video for Release
+        id: find_video
+        run: |
+          TASK_STATUS_FILE="task-status.json"
+          if [ ! -f "$TASK_STATUS_FILE" ]; then
+            echo "::error file=$TASK_STATUS_FILE::Task status file not found."
+            exit 1
+          fi
+
+          VIDEO_ID=""
+          VIDEO_TITLE=""
+
+          # Find a video where 'download_video' is 'completed' and 'publish_video' is 'pending'
+          # And process only one video at a time
+          video_to_release=$(jq -r 'to_entries[] | select(.value.download_video == "completed" and .value.publish_video == "pending") | .key' "$TASK_STATUS_FILE" | head -n 1)
+
+          if [ -z "$video_to_release" ]; then
+            echo "No videos found ready for release."
+            echo "::set-output name=found_video::false"
+            exit 0
+          fi
+
+          echo "Found video to release: $video_to_release"
+          VIDEO_ID="$video_to_release"
+
+          # Extract title from the metadata JSON
+          METADATA_FILE="videos/$VIDEO_ID/en.json" # Assuming 'en' for title, adjust if needed
+          if [ -f "$METADATA_FILE" ]; then
+            VIDEO_TITLE=$(jq -r '.title' "$METADATA_FILE")
+          else
+            echo "::warning file=$METADATA_FILE::Metadata file not found for title extraction, using video ID as title."
+            VIDEO_TITLE="$VIDEO_ID"
+          fi
+
+          echo "VIDEO_ID=$VIDEO_ID" >> $GITHUB_ENV
+          echo "VIDEO_TITLE=$VIDEO_TITLE" >> $GITHUB_ENV
+          echo "::set-output name=found_video::true"
+          echo "::set-output name=video_id::$VIDEO_ID"
+          echo "::set-output name=video_title::$VIDEO_TITLE"
+
+      - name: Create Release
+        if: steps.find_video.outputs.found_video == 'true'
+        uses: softprops/action-gh-release@v1
+        with:
+          ## VIDEO ID: Accessible in Zapier as "Tag Name"
+          tag_name: ${{ env.VIDEO_ID }}
+
+          ## VIDEO TITLE: Accessible in Zapier as "Name"
+          name: ${{ env.VIDEO_TITLE }}
+          files: videos/${{ env.VIDEO_ID }}/en.mp4 # Assuming 'en' for the main video file, adjust if needed
+
+          ## VIDEO DESCRIPTION: Accessible in Zapier as "Body"
+          body: |
+            ${{ env.VIDEO_TITLE }}
+
+            Video ID: ${{ env.VIDEO_ID }}
+
+            This release contains the video and its metadata.
+
+      - name: Handle Success
+        if: success()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const originalTitle = context.payload.issue.title;
+            const newTitle = originalTitle.includes("Success") ? originalTitle : `${originalTitle} - Success`;
+
+            // Rename issue and close it
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              title: newTitle,
+              state: 'closed',
+              state_reason: 'completed'
+            });
+
+            // Add success comment
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: '✅ **Success!** Video released for distribution.'
+            });
+
+      - name: Handle Failure
+        if: failure()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const originalTitle = context.payload.issue.title;
+            const newTitle = originalTitle.includes("Failed") ? originalTitle : `${originalTitle} - Failed`;
+
+            // Rename issue to indicate failure (keeps it open for debugging)
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              title: newTitle
+            });
