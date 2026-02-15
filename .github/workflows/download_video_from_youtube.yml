@@ -1,4 +1,4 @@
-name: Download Video from Issue
+name: YT Video Download [Zapier,Issue,Cron]
 
 on:
   issues:
