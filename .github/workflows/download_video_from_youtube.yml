@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   download_on_runner:
-    if: startsWith(github.event.issue.title, 'Download')
+    if: startsWith(github.event.issue.title, 'Process')
     runs-on: self-hosted
     
     steps:
