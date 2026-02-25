@@ -1,4 +1,4 @@
-name: "Task: Release Video from Metadata"
+name: "Release Video from Metadata [Issue]"
 
 on:
   workflow_dispatch:
