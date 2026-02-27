@@ -1,0 +1,55 @@
+name: YT Video Download [Issue]
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  download_on_runner:
+    if: startsWith(github.event.issue.title, 'Download')
+    runs-on: self-hosted
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Venv and Install Tools
+        run: |
+          if [ ! -d "venv" ]; then
+            python3 -m venv venv
+          fi
+          ./venv/bin/pip install --upgrade pip
+          ./venv/bin/pip install yt-dlp
+
+      - name: Parse and Download
+        # We use a Heredoc (cat << 'EOF') here.
+        # This safely copies the issue body to a file without 'echo' trying to interpret special characters.
+        run: |
+          cat << 'EOF' > issue_data.txt
+          ${{ github.event.issue.body }}
+          EOF
+          
+          echo "Running download script..."
+          ./venv/bin/python src/download_video.py issue_data.txt
+
+      - name: Commit and Push Video & Metadata
+        run: |
+          git config user.name "Self-Hosted Runner"
+          git config user.email "runner@local"
+          
+          # Create folders if missing to prevent git errors
+          mkdir -p videos metadata
+          
+          git add videos/ metadata/
+          
+          # Check if there are changes before committing to avoid empty commit errors
+          if git diff-index --quiet HEAD; then
+            echo "No changes to commit"
+          else
+            git commit -m "Add video & metadata from Issue #${{ github.event.issue.number }}"
+            git push
+          fi
