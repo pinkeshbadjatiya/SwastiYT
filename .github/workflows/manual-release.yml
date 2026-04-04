@@ -1,10 +1,10 @@
-name: "Release Video from Metadata [Issue]"
+name: Release Video from Metadata [Issue]
 
 on:
   workflow_dispatch:
     inputs:
       video_id:
-        description: 'Enter the Video ID (e.g., PGETFB5dJCY)'
+        description: "Enter the Video ID (e.g., PGETFB5dJCY)"
         required: true
   issues:
     types: [opened]
@@ -15,24 +15,25 @@ permissions:
 
 jobs:
   release:
-    # Trigger if manually run OR if issue title contains 'Release'
-    if: github.event_name == 'workflow_dispatch' || contains(github.event.issue.title, 'Release')
+    # Trigger if manually run OR if issue title starts with 'Release'
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.issue.title, 'Release')
     runs-on: ubuntu-latest
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.x'
+      - name: Setup Venv and Install Tools
+        run: |
+          if [ ! -d "venv" ]; then
+            python3 -m venv venv
+          fi
+          ./venv/bin/pip install --upgrade pip
 
-      - name: Fetch Metadata and Create Release
-        env:
-          # Get ID from manual input OR from the issue body
-          INPUT_ID: ${{ github.event.inputs.video_id || github.event.issue.body }}
+      - name: Parse and Release
         run: |
           # Clean the input (remove whitespace/newlines)
-          VIDEO_ID=$(echo "$INPUT_ID" | xargs)
-          python3 .github/scripts/generate_release.py "$VIDEO_ID"
+          VIDEO_ID=$(echo "${{ github.event.inputs.video_id || github.event.issue.title }}" | xargs)
+          
+          echo "Running release script for video ID: $VIDEO_ID"
+          ./venv/bin/python src/create_release.py "$VIDEO_ID"

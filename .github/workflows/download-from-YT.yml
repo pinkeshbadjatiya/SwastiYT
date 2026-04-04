@@ -1,3 +1,17 @@
+# GitHub Actions Workflow: YT Video Download [Issue]
+#
+# DESCRIPTION:
+# This workflow automatically downloads YouTube videos when a new issue is opened with a title starting with "Download".
+# It parses the issue title to extract the video ID or URL, downloads the video from YouTube,
+# extracts metadata (title, description, subtitles, thumbnails), and commits everything back to the repository.
+#
+# TRIGGER: An issue is opened (e.g., "Download eI2XD9pJ_QM" or "Download https://www.youtube.com/watch?v=VIDEO_ID")
+# RUNNER: Self-hosted runner (requires yt-dlp to be available)
+# OUTPUT: 
+#   - Downloaded video files in /videos/{video_id}/
+#   - Metadata in /metadata/{video_id}/{lang}.json
+#   - Helper files: video_id.txt, video_title.txt, video_description.txt, release_body.txt
+
 name: YT Video Download [Issue]
 
 on:
@@ -26,15 +40,13 @@ jobs:
           ./venv/bin/pip install yt-dlp
 
       - name: Parse and Download
-        # We use a Heredoc (cat << 'EOF') here.
-        # This safely copies the issue body to a file without 'echo' trying to interpret special characters.
         run: |
-          cat << 'EOF' > issue_data.txt
-          ${{ github.event.issue.body }}
-          EOF
-          
+          ISSUE_TITLE='${{ github.event.issue.title }}'
+          # Expect issue title like: Download <video_id> or Download <video_url>
+          ISSUE_PAYLOAD="$(echo "$ISSUE_TITLE" | sed -E 's/^Download[[:space:]]+//')"
+
           echo "Running download script..."
-          ./venv/bin/python src/download_video.py issue_data.txt
+          ./venv/bin/python src/download_video.py --task=single_video --video_id="$ISSUE_PAYLOAD"
 
       - name: Commit and Push Video & Metadata
         run: |
