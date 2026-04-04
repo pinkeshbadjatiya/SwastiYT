@@ -31,13 +31,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Install ffmpeg
+        run: |
+          sudo apt update
+          sudo apt install -y ffmpeg
+
       - name: Setup Venv and Install Tools
         run: |
           if [ ! -d "venv" ]; then
             python3 -m venv venv
           fi
           ./venv/bin/pip install --upgrade pip
-          ./venv/bin/pip install yt-dlp
+          ./venv/bin/pip install -r requirements.txt
 
       - name: Parse issue title and export video ID
         run: |
