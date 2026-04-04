@@ -10,6 +10,10 @@ from helpers import reorder_entries_of_yt_with_oldest_first
 CHANNEL_ID = "UCx9PzFr70x2194NbRB9JpQw"
 SOURCE_URL = f"https://www.youtube.com/channel/{CHANNEL_ID}/videos"
 
+# Languages to download subtitles for (to avoid rate limits)
+# Added Telugu (te) and Tamil (ta)
+LANGS_TO_DOWNLOAD = ['en', 'hi', 'es', 'te', 'ta']
+
 VIDEOS_FOLDER = "videos"
 METADATA_FOLDER = "metadata"
 
@@ -286,8 +290,14 @@ def download_video(issue_data):
 
     print(f"Detected audio languages: {', '.join(audio_langs)}")
 
-    # Save all helper files using yt-dlp metadata
-    save_metadata(info_dict, video_id, "en")
+    # Determine target languages (use global list) and available audio languages
+    formats = info_dict.get('formats', [])
+    available_audio_langs = set()
+    for fmt in formats:
+        if fmt.get('acodec') != 'none' and fmt.get('language'):
+            available_audio_langs.add(fmt['language'])
+
+    target_langs = [l for l in LANGS_TO_DOWNLOAD]
 
     # Check existence - if any lang.mp4 exists, skip
     expected_video_dir = os.path.join(VIDEOS_FOLDER, video_id)
@@ -297,25 +307,11 @@ def download_video(issue_data):
             print(f"⏩ Skipping download: Video directory already contains language MP4 files: {expected_video_dir}")
             return
 
-    # Download the video once
+    # We'll download per-language merged files (video+audio) directly as <lang>.mp4
     video_format = 'bestvideo[ext=mp4]'
-    video_opts = {
-        'outtmpl': f'{VIDEOS_FOLDER}/{video_id}/video.mp4',
-        'format': video_format,
-        'quiet': True,
-        'no_warnings': True,
-        'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-    }
-    print("Downloading video stream...")
-    try:
-        with yt_dlp.YoutubeDL(video_opts) as ydl:
-            ydl.download([video_url])
-    except Exception as e:
-        print(f"Error downloading video: {e}")
-        sys.exit(1)
 
-    # Download audio for each language and merge with video
-    for lang in audio_langs:
+    # Download audio for each target language and merge with video
+    for lang in target_langs:
         audio_format = f'bestaudio[language={lang}][ext=m4a]'
         merge_opts = {
             'outtmpl': f'{VIDEOS_FOLDER}/{video_id}/{lang}.mp4',
@@ -326,7 +322,7 @@ def download_video(issue_data):
             'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
             'writesubtitles': True,
             'writeautomaticsub': True,
-            'subtitleslangs': ['all'],
+            'subtitleslangs': LANGS_TO_DOWNLOAD,
             'subtitlesformat': 'vtt',
             'writethumbnail': True,
             'writeinfojson': True,
@@ -337,16 +333,16 @@ def download_video(issue_data):
         }
         print(f"Downloading and merging audio for language: {lang}")
         try:
-            with yt_dlp.YoutubeDL(merge_opts) as ydl:
-                ydl.download([video_url])
-                
-                # Save metadata for this language
-                subtitles = info_dict.get("subtitles", {})
-                if subtitles:
-                    for sub_lang, subtitle_info in subtitles.items():
-                        save_metadata(info_dict, video_id, sub_lang)
-                else:
-                    save_metadata(info_dict, video_id, lang)
+            if lang in available_audio_langs:
+                with yt_dlp.YoutubeDL(merge_opts) as ydl:
+                    ydl.download([video_url])
+                # Save language-specific metadata and mark audio as available
+                save_metadata(info_dict, video_id, lang)
+            else:
+                # No language-specific audio stream available; skip creating lang.mp4
+                print(f"No audio stream for {lang}; skipping creation of {lang}.mp4")
+                # Do not save metadata or create files when audio is missing
+                continue
         except Exception as e:
             print(f"Error downloading for language {lang}: {e}")
             continue
