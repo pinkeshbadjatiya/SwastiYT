@@ -7,7 +7,7 @@
 #
 # TRIGGER: An issue is opened (e.g., "Download eI2XD9pJ_QM" or "Download https://www.youtube.com/watch?v=VIDEO_ID")
 # RUNNER: Self-hosted runner (requires yt-dlp to be available)
-# OUTPUT: 
+# OUTPUT:
 #   - Downloaded video files in /videos/{video_id}/
 #   - Metadata in /metadata/{video_id}/{lang}.json
 #   - Helper files: video_id.txt, video_title.txt, video_description.txt, release_body.txt
@@ -24,9 +24,9 @@ permissions:
 
 jobs:
   download_on_runner:
-    if: startsWith(github.event.issue.title, 'Download')
+    if: startsWith(github.event.issue.title, 'Download single-video')
     runs-on: self-hosted
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -42,22 +42,21 @@ jobs:
       - name: Parse and Download
         run: |
           ISSUE_TITLE='${{ github.event.issue.title }}'
-          # Expect issue title like: Download <video_id> or Download <video_url>
-          ISSUE_PAYLOAD="$(echo "$ISSUE_TITLE" | sed -E 's/^Download[[:space:]]+//')"
 
-          echo "Running download script..."
-          ./venv/bin/python src/download_video.py --task=single_video --video_id="$ISSUE_PAYLOAD"
+          if [[ "$ISSUE_TITLE" =~ ^Download\ single-video\ (.+)$ ]]; then
+            VIDEO_ID="${BASH_REMATCH[1]}"
+            echo "VIDEO_ID=$VIDEO_ID" >> $GITHUB_ENV
 
       - name: Commit and Push Video & Metadata
         run: |
           git config user.name "Self-Hosted Runner"
           git config user.email "runner@local"
-          
+
           # Create folders if missing to prevent git errors
           mkdir -p videos metadata
-          
+
           git add videos/ metadata/
-          
+
           # Check if there are changes before committing to avoid empty commit errors
           if git diff-index --quiet HEAD; then
             echo "No changes to commit"
@@ -65,3 +64,48 @@ jobs:
             git commit -m "Add video & metadata from Issue #${{ github.event.issue.number }}"
             git push
           fi
+
+      # ---------------------------------------------------------
+      # STATUS HANDLING (Issue Updates)
+      # ---------------------------------------------------------
+
+      - name: Handle Success
+        if: success()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const originalTitle = context.payload.issue.title;
+            const newTitle = originalTitle.includes("Success") ? originalTitle : `${originalTitle} - Success`;
+
+            // Add success comment
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              body: '✅ **Success!** Video downloaded. Ready for release.'
+            });
+
+            // Close the issue
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              state: 'closed',
+              state_reason: 'completed'
+            })
+
+      - name: Handle Failure
+        if: failure()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const originalTitle = context.payload.issue.title;
+            const newTitle = originalTitle.includes("Failed") ? originalTitle : `${originalTitle} - Failed`;
+
+            // Rename issue to indicate failure (keeps it open for debugging)
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              title: newTitle
+            });

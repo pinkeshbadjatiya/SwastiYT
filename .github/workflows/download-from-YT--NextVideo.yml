@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   download_on_runner:
-    if: startsWith(github.event.issue.title, 'Process')
+    if: github.event.issue.title == 'Download next-video'
     runs-on: self-hosted
 
     steps:
@@ -26,15 +26,9 @@ jobs:
           ./venv/bin/pip install yt-dlp
 
       - name: Parse and Download
-        # We use a Heredoc (cat << 'EOF') here.
-        # This safely copies the issue body to a file without 'echo' trying to interpret special characters.
         run: |
-          cat << 'EOF' > issue_data.txt
-          ${{ github.event.issue.body }}
-          EOF
-
-          echo "Running download script..."
-          ./venv/bin/python src/download_video.py issue_data.txt
+          echo "Running next-video task..."
+          ./venv/bin/python src/download_video.py --task=next_video
 
       - name: Commit and Push Video & Metadata
         run: |
@@ -54,8 +48,6 @@ jobs:
             git push
           fi
 
-
-
       # ---------------------------------------------------------
       # STATUS HANDLING (Issue Updates)
       # ---------------------------------------------------------
@@ -72,22 +64,18 @@ jobs:
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: context.issue.number,
+              issue_number: context.payload.issue.number,
               body: '✅ **Success!** Video downloaded. Ready for release.'
             });
-            
+
             // Close the issue
             await github.rest.issues.update({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: context.issue.number,
+              issue_number: context.payload.issue.number,
               state: 'closed',
               state_reason: 'completed'
-            });
-
-      - name: Update Task Status
-        if: success()
-        run: python src/update_task_status.py ${{ env.VIDEO_ID }} download_video completed
+            })
 
       - name: Handle Failure
         if: failure()
@@ -101,6 +89,6 @@ jobs:
             await github.rest.issues.update({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: context.issue.number,
+              issue_number: context.payload.issue.number,
               title: newTitle
             });
