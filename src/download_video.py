@@ -315,10 +315,10 @@ def download_video(issue_data):
             print(f"⏩ Skipping download: Video directory already contains language MP4 files: {expected_video_dir}")
             return
 
-    # We'll download per-language merged files (video+audio) directly as <lang>.mp4
-    video_format = 'bestvideo[ext=mp4]'
+    # We'll download per-language best format (video+audio) as <lang>.mp4
+    # Use 'best[language={lang}]' to select the best format for that language, including auto-dubs
 
-    # Download audio for each target language and merge with video
+    # Download for each target language
     for lang in target_langs:
         matching_lang = find_matching_audio_lang(lang, available_audio_langs)
         if not matching_lang:
@@ -328,11 +328,9 @@ def download_video(issue_data):
         if matching_lang != lang:
             print(f"Falling back from requested language '{lang}' to available audio language '{matching_lang}'")
 
-        audio_format = f'bestaudio[language={matching_lang}]'
         merge_opts = {
             'outtmpl': f'{VIDEOS_FOLDER}/{video_id}/{lang}.mp4',
-            'format': f'{video_format}+{audio_format}',
-            'merge_output_format': 'mp4',
+            'format': f'best[language={matching_lang}]',
             'quiet': False,
             'no_warnings': True,
             'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
@@ -340,7 +338,7 @@ def download_video(issue_data):
             'writesubtitles': False,
             'writeautomaticsub': False,
         }
-        print(f"Downloading and merging audio for language: {lang} (using {matching_lang})")
+        print(f"Downloading best format for language: {lang} (using {matching_lang})")
         try:
             with yt_dlp.YoutubeDL(merge_opts) as ydl:
                 ydl.download([video_url])
