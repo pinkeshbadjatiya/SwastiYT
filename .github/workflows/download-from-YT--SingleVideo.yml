@@ -39,13 +39,18 @@ jobs:
           ./venv/bin/pip install --upgrade pip
           ./venv/bin/pip install yt-dlp
 
-      - name: Parse and Download
+      - name: Parse issue title and export video ID
         run: |
           ISSUE_TITLE='${{ github.event.issue.title }}'
 
           if [[ "$ISSUE_TITLE" =~ ^Download\ single-video\ (.+)$ ]]; then
             VIDEO_ID="${BASH_REMATCH[1]}"
             echo "VIDEO_ID=$VIDEO_ID" >> $GITHUB_ENV
+          fi
+
+      - name: Download single video
+        run: |
+          ./venv/bin/python src/download_video.py --task=single_video --video_id="$VIDEO_ID"
 
       - name: Commit and Push Video & Metadata
         run: |
