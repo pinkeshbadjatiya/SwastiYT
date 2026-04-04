@@ -279,23 +279,17 @@ def download_video(issue_data):
         print("Error: Could not extract video ID from yt-dlp.")
         sys.exit(1)
 
-    # Get list of available audio languages
-    formats = info_dict.get('formats', [])
-    audio_langs = set()
-    for fmt in formats:
-        if fmt.get('acodec') != 'none' and fmt.get('language'):
-            audio_langs.add(fmt['language'])
-    if not audio_langs:
-        audio_langs = {'en'}  # Default to English if no languages detected
-
-    print(f"Detected audio languages: {', '.join(audio_langs)}")
-
     # Determine available audio languages from formats
     formats = info_dict.get('formats', [])
     available_audio_langs = set()
     for fmt in formats:
         if fmt.get('acodec') != 'none' and fmt.get('language'):
             available_audio_langs.add(fmt['language'])
+    
+    if not available_audio_langs:
+        available_audio_langs = {'en'}  # Default to English if no languages detected
+
+    print(f"Detected audio languages: {', '.join(available_audio_langs)}")
 
     target_langs = [l for l in LANGS_TO_DOWNLOAD]
 
@@ -307,19 +301,14 @@ def download_video(issue_data):
                 return avail
         return None
 
-    # Check existence - if any lang.mp4 exists, skip
-    expected_video_dir = os.path.join(VIDEOS_FOLDER, video_id)
-    if os.path.exists(expected_video_dir):
-        mp4_files = [f for f in os.listdir(expected_video_dir) if f.lower().endswith('.mp4') and not f.startswith('video')]
-        if mp4_files:
-            print(f"⏩ Skipping download: Video directory already contains language MP4 files: {expected_video_dir}")
-            return
-
-    # We'll download per-language best format (video+audio) as <lang>.mp4
-    # Use 'best[language={lang}]' to select the best format for that language, including auto-dubs
-
     # Download for each target language
     for lang in target_langs:
+        # Check existence PER LANGUAGE (Fixed skip logic)
+        expected_file = os.path.join(VIDEOS_FOLDER, video_id, f"{lang}.mp4")
+        if os.path.exists(expected_file):
+            print(f"⏩ Skipping {lang}: {lang}.mp4 already exists.")
+            continue
+
         matching_lang = find_matching_audio_lang(lang, available_audio_langs)
         if not matching_lang:
             print(f"No audio stream for {lang}; skipping creation of {lang}.mp4")
@@ -329,16 +318,19 @@ def download_video(issue_data):
             print(f"Falling back from requested language '{lang}' to available audio language '{matching_lang}'")
 
         merge_opts = {
-            'outtmpl': f'{VIDEOS_FOLDER}/{video_id}/{lang}.mp4',
-            # FIXED: Explicitly ask to merge the best video with the specific language audio
+            'outtmpl': expected_file,
+            # FIXED: Explicitly grab best video and best audio for that language.
             'format': f'bestvideo+bestaudio[language={matching_lang}]/best',
+            # FIXED: Force ffmpeg to merge mismatched containers (like webm) into mp4 to preserve 1080p/4k quality
+            'merge_output_format': 'mp4',
             'quiet': False,
             'no_warnings': True,
             'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
             'writesubtitles': False,
             'writeautomaticsub': False,
         }
-        print(f"Downloading best format for language: {lang} (using {matching_lang})")
+        
+        print(f"Downloading high-quality format for language: {lang} (using {matching_lang})")
         try:
             with yt_dlp.YoutubeDL(merge_opts) as ydl:
                 ydl.download([video_url])
@@ -347,7 +339,7 @@ def download_video(issue_data):
             print(f"Error downloading for language {lang}: {e}")
             continue
     
-    print("Download success for all languages.")
+    print("Download sequence complete.")
 
 
 if __name__ == "__main__":
