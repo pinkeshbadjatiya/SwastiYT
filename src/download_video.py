@@ -214,16 +214,14 @@ def save_metadata(data, video_id, lang):
         print("Error: Video ID missing in issue data.")
         return
 
-    # Create a simplified metadata dictionary with only the required fields
+    # Create a simplified metadata dictionary with only the required fields.
+    # Keep tags/common info shared, and store title/description per language.
     simplified_metadata = {
         "id": video_id,
-        "title": title,
         "url": url,
         "published_date": published_date,
         "thumbnail": thumbnail,
         "duration": duration,
-        "description": description,
-        "subtitles": subtitles,
         "tags": tags,
         "uploader": uploader,
         "uploader_id": uploader_id,
@@ -231,7 +229,9 @@ def save_metadata(data, video_id, lang):
         "view_count": view_count,
         "like_count": like_count,
         "comment_count": comment_count,
-        "language": lang,  # Language-specific metadata
+        "language": lang,
+        "title": title,
+        "description": description,
     }
 
     # Save JSON Metadata for the specific language
@@ -320,16 +320,9 @@ def download_video(issue_data):
             'quiet': False,
             'no_warnings': True,
             'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'writesubtitles': True,
-            'writeautomaticsub': True,
-            'subtitleslangs': LANGS_TO_DOWNLOAD,
-            'subtitlesformat': 'vtt',
-            'writethumbnail': True,
-            'writeinfojson': True,
-            'writeannotations': True,
-            'writedescription': True,
-            'writeallsubs': True,
-            'allsubtitles': True,
+            # Do not save subtitles, thumbnails, infojson, annotations or descriptions
+            'writesubtitles': False,
+            'writeautomaticsub': False,
         }
         print(f"Downloading and merging audio for language: {lang}")
         try:
