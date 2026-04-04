@@ -12,7 +12,7 @@
 #   - Metadata in /metadata/{video_id}/{lang}.json
 #   - Helper files: video_id.txt, video_title.txt, video_description.txt, release_body.txt
 
-name: YT Video Download [Issue]
+name: YT Single Video Download [Issue]
 
 on:
   issues:

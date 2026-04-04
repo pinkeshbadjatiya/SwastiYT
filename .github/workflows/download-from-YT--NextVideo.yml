@@ -1,8 +1,10 @@
-name: YT Video Download [Zapier,Issue,Cron]
+name: YT NEXT Video Download [Issue,Cron]
 
 on:
   issues:
     types: [opened]
+  schedule:
+    - cron: "30 7 * * 0" # Sunday at 1 PM IST (7:30 AM UTC)
 
 permissions:
   contents: write
@@ -53,7 +55,7 @@ jobs:
       # ---------------------------------------------------------
 
       - name: Handle Success
-        if: success()
+        if: success() && github.event_name == 'issues'
         uses: actions/github-script@v6
         with:
           script: |
@@ -78,7 +80,7 @@ jobs:
             })
 
       - name: Handle Failure
-        if: failure()
+        if: failure() && github.event_name == 'issues'
         uses: actions/github-script@v6
         with:
           script: |
