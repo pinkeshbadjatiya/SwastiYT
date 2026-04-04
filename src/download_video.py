@@ -290,7 +290,7 @@ def download_video(issue_data):
 
     print(f"Detected audio languages: {', '.join(audio_langs)}")
 
-    # Determine target languages (use global list) and available audio languages
+    # Determine available audio languages from formats
     formats = info_dict.get('formats', [])
     available_audio_langs = set()
     for fmt in formats:
@@ -298,6 +298,14 @@ def download_video(issue_data):
             available_audio_langs.add(fmt['language'])
 
     target_langs = [l for l in LANGS_TO_DOWNLOAD]
+
+    def find_matching_audio_lang(target, available_langs):
+        if target in available_langs:
+            return target
+        for avail in available_langs:
+            if avail.split('-')[0] == target:
+                return avail
+        return None
 
     # Check existence - if any lang.mp4 exists, skip
     expected_video_dir = os.path.join(VIDEOS_FOLDER, video_id)
@@ -312,7 +320,15 @@ def download_video(issue_data):
 
     # Download audio for each target language and merge with video
     for lang in target_langs:
-        audio_format = f'bestaudio[language={lang}][ext=m4a]'
+        matching_lang = find_matching_audio_lang(lang, available_audio_langs)
+        if not matching_lang:
+            print(f"No audio stream for {lang}; skipping creation of {lang}.mp4")
+            continue
+
+        if matching_lang != lang:
+            print(f"Falling back from requested language '{lang}' to available audio language '{matching_lang}'")
+
+        audio_format = f'bestaudio[language={matching_lang}][ext=m4a]'
         merge_opts = {
             'outtmpl': f'{VIDEOS_FOLDER}/{video_id}/{lang}.mp4',
             'format': f'{video_format}+{audio_format}',
@@ -324,18 +340,11 @@ def download_video(issue_data):
             'writesubtitles': False,
             'writeautomaticsub': False,
         }
-        print(f"Downloading and merging audio for language: {lang}")
+        print(f"Downloading and merging audio for language: {lang} (using {matching_lang})")
         try:
-            if lang in available_audio_langs:
-                with yt_dlp.YoutubeDL(merge_opts) as ydl:
-                    ydl.download([video_url])
-                # Save language-specific metadata and mark audio as available
-                save_metadata(info_dict, video_id, lang)
-            else:
-                # No language-specific audio stream available; skip creating lang.mp4
-                print(f"No audio stream for {lang}; skipping creation of {lang}.mp4")
-                # Do not save metadata or create files when audio is missing
-                continue
+            with yt_dlp.YoutubeDL(merge_opts) as ydl:
+                ydl.download([video_url])
+            save_metadata(info_dict, video_id, lang)
         except Exception as e:
             print(f"Error downloading for language {lang}: {e}")
             continue
