@@ -328,7 +328,7 @@ def download_video(issue_data):
         if matching_lang != lang:
             print(f"Falling back from requested language '{lang}' to available audio language '{matching_lang}'")
 
-        audio_format = f'bestaudio[language={matching_lang}][ext=m4a]'
+        audio_format = f'bestaudio[language={matching_lang}]'
         merge_opts = {
             'outtmpl': f'{VIDEOS_FOLDER}/{video_id}/{lang}.mp4',
             'format': f'{video_format}+{audio_format}',
