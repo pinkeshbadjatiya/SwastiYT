@@ -19,10 +19,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Install ffmpeg
-        run: |
-          sudo apt update
-          sudo apt install -y ffmpeg
+      # - name: Install ffmpeg
+      #   run: |
+      #     sudo apt update
+      #     sudo apt install -y ffmpeg
 
       - name: Setup Venv and Install Tools
         run: |
