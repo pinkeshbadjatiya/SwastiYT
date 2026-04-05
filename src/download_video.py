@@ -262,84 +262,60 @@ def download_video(issue_data):
 
     # Extract metadata from yt-dlp first (before downloading)
     print(f"Extracting metadata from yt-dlp for: {video_url}")
-    try:
-        extraction_opts = {
-            'quiet': True,
-            'no_warnings': True,
-            'extract_flat': False,  # Get full info, not just flat
-        }
-        with yt_dlp.YoutubeDL(extraction_opts) as ydl:
-            info_dict = ydl.extract_info(video_url, download=False)
-            video_id = info_dict.get("id")
-    except Exception as e:
-        print(f"Error extracting metadata: {e}")
-        sys.exit(1)
+# 1. First, fetch the info to see what's actually available
+    with yt_dlp.YoutubeDL({'quiet': True}) as ydl:
+        info_dict = ydl.extract_info(video_url, download=False)
+        video_id = info_dict.get("id")
 
-    if not video_id:
-        print("Error: Could not extract video ID from yt-dlp.")
-        sys.exit(1)
-
-    # Determine available audio languages from formats
+    # 2. Determine which dubbed tracks exist
+    # YouTube dubs often use format IDs like '234-es' or '303-hi'
     formats = info_dict.get('formats', [])
-    available_audio_langs = set()
-    for fmt in formats:
-        if fmt.get('acodec') != 'none' and fmt.get('language'):
-            available_audio_langs.add(fmt['language'])
+    available_langs = set(f.get('language') for f in formats if f.get('language'))
+    print(f"Available audio languages on YouTube: {available_langs}")
+
+    # 3. Build a format string for high quality + multi-audio
+    # We want: Best Video + (Best English Audio AND Best Spanish Audio AND ...)
+    # Logic: 'bv' (best video) + 'ba[lang=en]' + 'ba[lang=es]' ...
     
-    if not available_audio_langs:
-        available_audio_langs = {'en'}  # Default to English if no languages detected
+    selected_audio_parts = []
+    for lang in LANGS_TO_DOWNLOAD:
+        # Check if the lang or a sub-lang (e.g., 'es-MX') exists
+        match = next((l for l in available_langs if l and l.startswith(lang)), None)
+        if match:
+            # We use 'bestaudio[language=...]' to get the high-quality stream
+            selected_audio_parts.append(f"bestaudio[language={match}]")
+        else:
+            print(f"⚠️ Language {lang} not found for this video. Skipping.")
 
-    print(f"Detected audio languages: {', '.join(available_audio_langs)}")
+    if not selected_audio_parts:
+        # Fallback to default if somehow no target languages are found
+        format_selector = "bv+ba/b"
+    else:
+        # Combine them: e.g., "bv+bestaudio[language=en]+bestaudio[language=hi]"
+        format_selector = f"bv+{'+'.join(selected_audio_parts)}"
 
-    target_langs = [l for l in LANGS_TO_DOWNLOAD]
+    # 4. Download with Merging
+    download_opts = {
+        # Using .mkv is safest for high-quality multi-audio, 
+        # but we can remux to .mp4 if your FFmpeg supports it.
+        'outtmpl': f'{VIDEOS_FOLDER}/{video_id}/%(title)s.%(ext)s',
+        'format': format_selector,
+        'audio_multistreams': True, # CRITICAL: Allows keeping more than one audio track
+        'merge_output_format': 'mkv', # MKV handles multi-audio streams better than MP4
+        'writemetadata': True,
+        'postprocessors': [{
+            'key': 'FFmpegMetadata',
+            'add_metadata': True,
+        }],
+    }
 
-    def find_matching_audio_lang(target, available_langs):
-        if target in available_langs:
-            return target
-        for avail in available_langs:
-            if avail.split('-')[0] == target:
-                return avail
-        return None
-
-    # Download for each target language
-    for lang in target_langs:
-        # Check existence PER LANGUAGE (Fixed skip logic)
-        expected_file = os.path.join(VIDEOS_FOLDER, video_id, f"{lang}.mp4")
-        if os.path.exists(expected_file):
-            print(f"⏩ Skipping {lang}: {lang}.mp4 already exists.")
-            continue
-
-        matching_lang = find_matching_audio_lang(lang, available_audio_langs)
-        if not matching_lang:
-            print(f"No audio stream for {lang}; skipping creation of {lang}.mp4")
-            continue
-
-        if matching_lang != lang:
-            print(f"Falling back from requested language '{lang}' to available audio language '{matching_lang}'")
-
-        merge_opts = {
-            'outtmpl': expected_file,
-            # FIXED: Explicitly grab best video and best audio for that language.
-            'format': f'bestvideo+bestaudio[language={matching_lang}]/best',
-            # FIXED: Force ffmpeg to merge mismatched containers (like webm) into mp4 to preserve 1080p/4k quality
-            'merge_output_format': 'mp4',
-            'quiet': False,
-            'no_warnings': True,
-            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'writesubtitles': False,
-            'writeautomaticsub': False,
-        }
-        
-        print(f"Downloading high-quality format for language: {lang} (using {matching_lang})")
-        try:
-            with yt_dlp.YoutubeDL(merge_opts) as ydl:
-                ydl.download([video_url])
-            save_metadata(info_dict, video_id, lang)
-        except Exception as e:
-            print(f"Error downloading for language {lang}: {e}")
-            continue
-    
-    print("Download sequence complete.")
+    print(f"🚀 Downloading high-quality video with multiple audio tracks...")
+    try:
+        with yt_dlp.YoutubeDL(download_opts) as ydl:
+            ydl.download([video_url])
+        print("✅ Download successful with all available dubbed tracks.")
+    except Exception as e:
+        print(f"❌ Download failed: {e}")
 
 
 if __name__ == "__main__":
