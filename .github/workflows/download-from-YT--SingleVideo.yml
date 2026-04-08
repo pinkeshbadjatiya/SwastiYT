@@ -31,10 +31,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # - name: Install ffmpeg
-      #   run: |
-      #     sudo apt update
-      #     sudo apt install -y ffmpeg
+      # 1. Install Node.js (CRITICAL for the 'node' n-client solver)
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+
+      # 2. Ensure FFmpeg is present (Required for merging multi-audio into MKV)
+      - name: Install ffmpeg
+        run: |
+          sudo apt update
+          sudo apt install -y ffmpeg
 
       - name: Setup Venv and Install Tools
         run: |
@@ -47,14 +54,20 @@ jobs:
       - name: Parse issue title and export video ID
         run: |
           ISSUE_TITLE='${{ github.event.issue.title }}'
-
           if [[ "$ISSUE_TITLE" =~ ^Download\ single-video\ (.+)$ ]]; then
             VIDEO_ID="${BASH_REMATCH[1]}"
             echo "VIDEO_ID=$VIDEO_ID" >> $GITHUB_ENV
           fi
 
+      # 3. Handle Cookies (Security Improvement)
+      # If your cookies.txt isn't in the repo, create it from a secret
+      - name: Create Cookies File
+        run: |
+          echo "${{ secrets.YOUTUBE_COOKIES }}" > cookies.txt
+
       - name: Download single video
         run: |
+          # The script now uses the node runtime automatically thanks to your Python updates
           ./venv/bin/python src/download_video.py --task=single_video --video_id="$VIDEO_ID"
 
       - name: Commit and Push Video & Metadata
@@ -62,12 +75,9 @@ jobs:
           git config user.name "Self-Hosted Runner"
           git config user.email "runner@local"
 
-          # Create folders if missing to prevent git errors
           mkdir -p videos metadata
-
           git add videos/ metadata/
 
-          # Check if there are changes before committing to avoid empty commit errors
           if git diff-index --quiet HEAD; then
             echo "No changes to commit"
           else
@@ -75,34 +85,24 @@ jobs:
             git push
           fi
 
-      # ---------------------------------------------------------
-      # STATUS HANDLING (Issue Updates)
-      # ---------------------------------------------------------
-
       - name: Handle Success
         if: success()
         uses: actions/github-script@v6
         with:
           script: |
-            const originalTitle = context.payload.issue.title;
-            const newTitle = originalTitle.includes("Success") ? originalTitle : `${originalTitle} - Success`;
-
-            // Add success comment
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.payload.issue.number,
-              body: '✅ **Success!** Video downloaded. Ready for release.'
+              body: '✅ **Success!** Video and metadata processed with multi-audio support.'
             });
-
-            // Close the issue
             await github.rest.issues.update({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.payload.issue.number,
               state: 'closed',
               state_reason: 'completed'
-            })
+            });
 
       - name: Handle Failure
         if: failure()
@@ -111,8 +111,6 @@ jobs:
           script: |
             const originalTitle = context.payload.issue.title;
             const newTitle = originalTitle.includes("Failed") ? originalTitle : `${originalTitle} - Failed`;
-
-            // Rename issue to indicate failure (keeps it open for debugging)
             await github.rest.issues.update({
               owner: context.repo.owner,
               repo: context.repo.repo,

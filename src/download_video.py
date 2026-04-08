@@ -106,11 +106,7 @@ def playlist_video_ids():
 
 
 def is_video_downloaded(video_id):
-    """
-    Checks if a video with the given ID has already been downloaded by looking for MP4 files in the expected directory.
-    """
     global VIDEOS_FOLDER
-
     if not video_id:
         return False
 
@@ -118,8 +114,9 @@ def is_video_downloaded(video_id):
     if not os.path.isdir(video_dir):
         return False
 
+    # Check for both mp4 and mkv since we are merging to mkv
     for filename in os.listdir(video_dir):
-        if filename.lower().endswith('.mp4'):
+        if filename.lower().endswith(('.mp4', '.mkv')):
             return True
     return False
 
@@ -262,58 +259,51 @@ def download_video(issue_data):
 
     # Extract metadata from yt-dlp first (before downloading)
     print(f"Extracting metadata from yt-dlp for: {video_url}")
-# 1. First, fetch the info to see what's actually available
+    
+    # 1. First, fetch the info to see what's actually available
     with yt_dlp.YoutubeDL({'quiet': True}) as ydl:
         info_dict = ydl.extract_info(video_url, download=False)
         video_id = info_dict.get("id")
 
-    # 2. Determine which dubbed tracks exist
-    # YouTube dubs often use format IDs like '234-es' or '303-hi'
-    formats = info_dict.get('formats', [])
-    available_langs = set(f.get('language') for f in formats if f.get('language'))
-    print(f"Available audio languages on YouTube: {available_langs}")
+    # 2. Build the format string dynamically from LANGS_TO_DOWNLOAD
+    # This ensures it tries to grab en, hi, te, ta, etc.
+    audio_formats = "+".join([f"bestaudio[language^={lang}]" for lang in LANGS_TO_DOWNLOAD])
+    format_selector = f"bestvideo+{audio_formats}/best"
 
-    # 3. Build a format string for high quality + multi-audio
-    # We want: Best Video + (Best English Audio AND Best Spanish Audio AND ...)
-    # Logic: 'bv' (best video) + 'ba[lang=en]' + 'ba[lang=es]' ...
-    
-    selected_audio_parts = []
-    for lang in LANGS_TO_DOWNLOAD:
-        # Check if the lang or a sub-lang (e.g., 'es-MX') exists
-        match = next((l for l in available_langs if l and l.startswith(lang)), None)
-        if match:
-            # We use 'bestaudio[language=...]' to get the high-quality stream
-            selected_audio_parts.append(f"bestaudio[language={match}]")
-        else:
-            print(f"⚠️ Language {lang} not found for this video. Skipping.")
-
-    if not selected_audio_parts:
-        # Fallback to default if somehow no target languages are found
-        format_selector = "bv+ba/b"
-    else:
-        # Combine them: e.g., "bv+bestaudio[language=en]+bestaudio[language=hi]"
-        format_selector = f"bv+{'+'.join(selected_audio_parts)}"
-
-    # 4. Download with Merging
+    # 3. Download with Merging
     download_opts = {
-        # Using .mkv is safest for high-quality multi-audio, 
-        # but we can remux to .mp4 if your FFmpeg supports it.
-        'outtmpl': f'{VIDEOS_FOLDER}/{video_id}/%(title)s.%(ext)s',
+        'outtmpl': f'{VIDEOS_FOLDER}/%(id)s/%(title)s.%(ext)s',
         'format': format_selector,
-        'audio_multistreams': True, # CRITICAL: Allows keeping more than one audio track
-        'merge_output_format': 'mkv', # MKV handles multi-audio streams better than MP4
-        'writemetadata': True,
+        'audio_multistreams': True,
+        'merge_output_format': 'mkv',
+        'cookies': './cookies.txt',
+        'js_runtime': 'node',
+        'extractor_args': {
+            'youtube': {
+                'player_client': ['mweb', 'web'],
+                'n_client': 'node'
+            }
+        },
+        'remote_components': 'ejs:github',
         'postprocessors': [{
             'key': 'FFmpegMetadata',
             'add_metadata': True,
         }],
+        'verbose': True 
     }
 
-    print(f"🚀 Downloading high-quality video with multiple audio tracks...")
+    print(f"🚀 Downloading high-quality video with tracks: {LANGS_TO_DOWNLOAD}")
     try:
         with yt_dlp.YoutubeDL(download_opts) as ydl:
-            ydl.download([video_url])
-        print("✅ Download successful with all available dubbed tracks.")
+            # Extract info and download in one step
+            info_dict = ydl.extract_info(video_url, download=True)
+            video_id = info_dict.get("id")
+            
+            # Save metadata for each language for the patient portal
+            for lang in LANGS_TO_DOWNLOAD:
+                save_metadata(info_dict, video_id, lang)
+                
+        print("✅ Download and metadata generation successful.")
     except Exception as e:
         print(f"❌ Download failed: {e}")
 
